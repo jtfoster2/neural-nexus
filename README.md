@@ -23,6 +23,8 @@ git clone https://github.com/jtfoster2/neural-nexus
 
 ### **2\. Install Python Dependencies**
 
+cd neural-nexas
+
 pip install -r requirements.txt  
 
 If you don’t have a requirements.txt, use:
@@ -42,6 +44,8 @@ Leave Ollama running in the background.
 ## **▶️ Usage**
 
 ### **Run the Streamlit App**
+
+In second terminal window
 
 streamlit run app.py  
 
