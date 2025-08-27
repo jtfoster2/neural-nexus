@@ -19,7 +19,7 @@ It can be extended with tools, APIs, or knowledge bases (RAG) to answer customer
 
 ### **1\. Clone Repo**
 
-git clone < customer-support-agent  
+git clone https://github.com/jtfoster2/neural-nexus  
 
 ### **2\. Install Python Dependencies**
 
