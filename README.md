@@ -52,7 +52,7 @@ Open your browser at [http://localhost:8501](http://localhost:8501/).
 .  
 ├── agent.py # LangGraph agent definition  
 ├── app.py # Streamlit UI  
-├── README.md # 
+├── README.md 
 └── requirements.txt  
 
 ## **🛠️ How It Works**
