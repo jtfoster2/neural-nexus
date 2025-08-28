@@ -3,7 +3,8 @@ from agent import app   # import the LangGraph workflow
 
 st.set_page_config(page_title="Customer Support Agent", page_icon="🤖")
 
-st.title("Customer Support Agent")
+#Centered title
+st.markdown("<h1 style='text-align: center;'>Customer Support Agent</h1>", unsafe_allow_html=True)
 
 # Session state to store chat history
 if "messages" not in st.session_state:
