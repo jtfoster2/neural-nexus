@@ -89,7 +89,7 @@ graph.add_edge("tool_executor", "finalizer")
 graph.add_edge("finalizer", END)
 
 memory = MemorySaver()
-app = graph.compile(checkpointer=memory) #checkpointer to save state history such as name, or other customer info for same session.
+app = graph.compile(checkpointer=memory) #checkpointer to save state history such as name, or other customer info in same session.
 
 # --- Helper function for Streamlit ---
 def ask_agent(query: str, thread_id: str = "default") -> str:
