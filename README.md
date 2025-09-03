@@ -1,91 +1,71 @@
-# **🤖 Customer Support Agent (LangGraph + Mistral + Streamlit)**
+# 🤖 Agentic Gemini App
 
-This project is a **customer support chatbot** powered by:
+This project is a **multi-tool AI agent** built with:
+- [LangGraph](https://github.com/langchain-ai/langgraph) for agent workflows
+- [LangChain](https://www.langchain.com/) for LLM abstraction
+- [Google Gemini](https://ai.google.dev/) as the LLM backend
+- [Streamlit](https://streamlit.io/) for a simple chat UI
 
-- LangGraph → for conversation orchestration
-- Mistral (via Ollama) → locally hosted LLM
-- Streamlit → chat-style web UI
+---
 
-It can be extended with tools, APIs, or knowledge bases (RAG) to answer customer queries about orders, billing, or technical support.
+## 🚀 Features
+- Uses **Google Gemini** (`gemini-2.5-flash`) as the reasoning model.
+- Multi-tool agent with:
 
-## **🚀 Features**
+  #### FOR FUTURE EXPANSION####
 
-- Local **Mistral model** (no external API costs).
-- **Graph-based agent logic** with LangGraph.
-- Clean **chat UI** built with Streamlit.
-- Extensible: add FAQ docs, database lookup, or API calls.
+- Built with **LangGraph** → structured workflows with planner → tool executor → finalizer.
+- **Streamlit chat app** with session memory.
+- Environment variables managed via `.env`.
 
-## **📦 Installation**
+---
 
-### **1\. Clone Repo**
+## 📦 Installation
 
-git clone https://github.com/jtfoster2/neural-nexus  
+Clone the repo and install dependencies:
 
-### **2\. Install Python Dependencies**
+```bash
+git clone https://github.com/jtfoster2/neural-nexus
+cd neural-nexus
+pip install -r requirements.txt
+```
 
-cd neural-nexas
+---
 
-pip install -r requirements.txt  
+## 🔑 Setup
 
-If you don’t have a requirements.txt, use:
+1. Create a Gemini API key at https://aistudio.google.com/apikey
 
-pip install langchain langgraph langchain-community streamlit  
+2. Create a `.env` file in the root of the project:
+   ```env
+   GOOGLE_API_KEY="your_api_key_here"
+   ```
 
-### **3\. Install & Run Ollama**
+3. Make sure your Gemini API key is active in [Google AI Studio](https://makersuite.google.com/).
 
-Ollama makes running Mistral locally easy:
+---
 
-curl -fsSL <https://ollama.com/install.sh> | sh  
-ollama pull mistral  
-ollama run mistral  
+## 💬 Run the Streamlit Chat App
 
-Leave Ollama running in the background.
+Launch the chat UI:
 
-## **▶️ Usage**
+```bash
+streamlit run app.py
+```
 
-### **Run the Streamlit App**
+Then open the link in your browser (default: [http://localhost:8501](http://localhost:8501)).
 
-In second terminal window
+---
 
-streamlit run app.py  
+## 🧩 Project Structure
 
-Open your browser at [http://localhost:8501](http://localhost:8501/).
+```
+.
+├── agent.py       # LangGraph workflow (planner, tools, finalizer)
+├── app.py         # Streamlit UI
+├── requirements.txt
+└── .env           # Environment variables (Google API key)
+```
 
-## **📂 Project Structure**
 
-.  
-├── agent.py # LangGraph agent definition  
-├── app.py # Streamlit UI  
-├── README.md 
-└── requirements.txt  
 
-## **🛠️ How It Works**
-
-1. **agent.py** defines a simple LangGraph workflow:
-    1. Maintains conversation state (messages)
-    2. Calls Mistral through ChatOllama
-    3. Returns responses back to the UI
-2. **app.py** renders the chat UI:
-    1. Keeps history in st.session_state
-    2. Uses LangGraph agent to generate replies
-
-## **🔮 Next Steps / Enhancements**
-
-- **Knowledge Base (RAG)** → Connect FAQs, product docs, or a vector DB (like FAISS, Weaviate, or Pinecone).
-- **APIs / Tools** → Add CRM or order lookup via LangGraph tool nodes.
-- **Conversation Memory** → Store chats in Redis or SQLite.
-- **Multi-Agent Routing** → Direct questions to “Billing Bot” vs “Tech Support Bot”.
-
-## **🧪 Example Interaction**
-
-**User:**
-
-Hi, I have an issue with my order.
-
-**Assistant:**
-
-I’m sorry to hear that! Could you share your order number so I can help look it up?
-
-## **⚖️ License**
-
-MIT License – feel free to modify and use.
