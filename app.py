@@ -24,6 +24,6 @@ if prompt := st.chat_input("Ask me anything about your order, billing, etc."):
     st.chat_message("user").write(prompt)
 
     with st.spinner("Thinking..."):
-        reply = ask_agent(prompt, thread_id="customer-support")  # calls agent
+        reply = ask_agent(prompt, thread_id="customer-support") #######thread_id will need to updated dynamically in future versions#######
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.chat_message("assistant").write(reply)

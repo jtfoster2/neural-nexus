@@ -29,7 +29,7 @@ class AgentState(TypedDict): # defines the state structure for the agent, helps 
 # --- Gemini model ---
 model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash", #use gemini-2.5-lite for cheaper option
-    google_api_key=os.environ["GOOGLE_API_KEY"]
+    google_api_key=os.environ["GOOGLE_API_KEY"],
     stream=True  # enable streaming
 )
 
@@ -79,9 +79,9 @@ def finalizer(state: AgentState):
 
 # --- Build graph ---
 graph = StateGraph(AgentState)
-graph.add_node("planner", planner)
-graph.add_node("tool_executor", tool_executor)
-graph.add_node("finalizer", finalizer)
+graph.add_node("planner", planner) #decides which agents to call
+graph.add_node("tool_executor", tool_executor) #executes the tools
+graph.add_node("finalizer", finalizer) #finalizes the response
 
 graph.set_entry_point("planner")
 graph.add_edge("planner", "tool_executor")
