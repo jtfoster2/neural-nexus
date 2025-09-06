@@ -56,6 +56,15 @@ streamlit run app.py
 Then open the link in your browser (default: [http://localhost:8501](http://localhost:8501)).
 
 ---
+4. ## 🔑 Setup
+email agent
+1. Create a SendGrid API key at https://sendgrid.com/en-us/solutions/email-api
+
+2. Create a `.env` file in the root of the project:
+   ```env
+   SENDGRID_API_KEY="your_api_key_here"
+   ```
+
 
 ## 🧩 Project Structure
 
