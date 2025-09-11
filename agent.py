@@ -10,15 +10,19 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 load_dotenv()
 
 # --- Tools ---
-def change_address(query: str) -> str: # mock tool will update when DB is connected
+
+
+def change_address(query: str) -> str:  # mock tool will update when DB is connected
     try:
         return str(eval(query))
     except Exception:
         return "Error evaluating expression"
 
+# def email_agent(messages:str) -> str:
+
 
 # --- State definition ---
-class AgentState(TypedDict): # defines the state structure for the agent, helps with logging
+class AgentState(TypedDict):  # defines the state structure for the agent, helps with logging
     input: str
     reasoning: Optional[str]
     tool_calls: List[str]
@@ -28,14 +32,14 @@ class AgentState(TypedDict): # defines the state structure for the agent, helps 
 
 # --- Gemini model ---
 model = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash", #use gemini-2.5-lite for cheaper option
+    model="gemini-2.5-flash",  # use gemini-2.5-lite for cheaper option
     google_api_key=os.environ["GOOGLE_API_KEY"],
     stream=True  # enable streaming
 )
 
 
 # --- Nodes ---
-def planner(state: AgentState): # decides which tools to call
+def planner(state: AgentState):  # decides which tools to call
     query = state["input"]
     response = model.invoke(
         f"You are a helpful customer support assistant for CapGemini with tools.\n"
@@ -45,6 +49,7 @@ def planner(state: AgentState): # decides which tools to call
         f"If you don’t know, say you will connect the user to a human agent.\n"
         f"User query: {query}\n"
         f'{{"reasoning": "...", "tool_calls": ["toolname: argument", ...]}}'
+        #  f'{{"reasoning": "...", "tool_calls": ["toolname: email_agent", ...]}}'
     )
     try:
         parsed = json.loads(response.content)
@@ -55,7 +60,8 @@ def planner(state: AgentState): # decides which tools to call
     return state
 
 
-def tool_executor(state: AgentState): #implements the tools, and calls methods, For future use. 
+# implements the tools, and calls methods, For future use.
+def tool_executor(state: AgentState):
     return state
 
 
@@ -79,9 +85,9 @@ def finalizer(state: AgentState):
 
 # --- Build graph ---
 graph = StateGraph(AgentState)
-graph.add_node("planner", planner) #decides which agents to call
-graph.add_node("tool_executor", tool_executor) #executes the tools
-graph.add_node("finalizer", finalizer) #finalizes the response
+graph.add_node("planner", planner)  # decides which agents to call
+graph.add_node("tool_executor", tool_executor)  # executes the tools
+graph.add_node("finalizer", finalizer)  # finalizes the response
 
 graph.set_entry_point("planner")
 graph.add_edge("planner", "tool_executor")
@@ -89,9 +95,12 @@ graph.add_edge("tool_executor", "finalizer")
 graph.add_edge("finalizer", END)
 
 memory = MemorySaver()
-app = graph.compile(checkpointer=memory) #checkpointer to save state history such as name, or other customer info in same session.
+# checkpointer to save state history such as name, or other customer info in same session.
+app = graph.compile(checkpointer=memory)
 
 # --- Helper function for Streamlit ---
+
+
 def ask_agent(query: str, thread_id: str = "default") -> str:
     result = app.invoke(
         {"input": query},
