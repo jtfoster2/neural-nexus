@@ -8,10 +8,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 # import the tool
 from sendgrid_tool import send_order_email
 
-# Set up the environment variable
-
 # Define the graph state
-
 
 class EmailAgentState(TypedDict):
     messages: Annotated[List[BaseMessage], lambda x, y: x + y]
