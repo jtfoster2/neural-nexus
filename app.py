@@ -1,6 +1,6 @@
 import streamlit as st
 import json
-from agent import app, ask_agent
+from supervisor import ask_agent
 import db
 from db import detect_intent
 
