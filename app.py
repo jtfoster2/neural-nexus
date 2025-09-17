@@ -46,14 +46,14 @@ for msg in st.session_state.messages:
         role = "assistant"
     st.chat_message(role).write(msg["content"])
 
-def ask_with_spinner(prompt: str, email: str | None): #Wrapper to show spinner and enforce minimum response time
+def ask_with_spinner(prompt: str, email: str | None): # show spinner while waiting for response
     start = time.time()
     with st.spinner("Thinking…"):
         reply = ask_agent(prompt, email=email)
-    elapsed = time.time() - start
-    # Enforce a minimum of 3s total to avoid “snap” responses
-    if elapsed < 3:
-        time.sleep(3 - elapsed)
+        elapsed = time.time() - start
+        # Enforce a minimum of 3s total to avoid “snap” responses
+        if elapsed < 3:
+            time.sleep(3 - elapsed)
     return reply
 
     
@@ -121,25 +121,18 @@ if prompt := st.chat_input("Ask me anything about your order, billing, etc.", ke
         else:
             reply = "Sorry, we couldn't find your email. Please register or try again."
 
-    #Input requires email but email not provided yet
-    elif any(kw in prompt_lower for kw in [
-        "shipping", "track", "delivery", "order", "purchase",
-        "billing", "invoice", "refund", "change address", "change email",
-        "password"
-    ]) and not st.session_state.user_email:
-        st.session_state.last_intent = prompt_lower
-        reply = "To help with your order, shipping, billing, refund, or address change, please provide your email."
-
     #User has email, handle known keywords
     elif st.session_state.user_email:
         intent = detect_intent(prompt_lower)
         if intent:
             reply = handle_option(intent, from_chat=True)
         else:
+            st.chat_message("user").write(prompt)
             reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     #Fallback to AI
     else:
+        st.chat_message("user").write(prompt)
         reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     #Save messages
