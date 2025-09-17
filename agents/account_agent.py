@@ -28,7 +28,6 @@ def forgot_password_agent(state: AgentState) -> AgentState:
     )
     return state
 
-# --- Tools ---
 def change_address(query: str) -> str: # mock tool will update when DB is connected
     try:
         return str(eval(query))

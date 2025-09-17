@@ -40,73 +40,10 @@ if not st.session_state.messages:
 
 # --- Display chat history ---
 for msg in st.session_state.messages:
-    st.chat_message("user").write(msg["content"])
+    role = msg.get("role", "assistant")  # default to assistant if missing
+    st.chat_message(role).write(msg["content"])
+
     
-
-
-#Intent handlers
-def handle_order(user):
-    if user:
-        orders = user[4] if len(user) > 5 else user[3]
-        try:
-            order_list = json.loads(orders) if orders else []
-        except Exception:
-            order_list = []
-        if order_list:
-            details = "\n".join([
-            f"Order ID: {o['id']} | Product: {o['product']} | Qty: {o['qty']} | Price: {o['price']} | Purchase Date: {o.get('purchase_date', 'N/A')} | Status: {o.get('status', 'N/A')} | Card Ending: {o.get('card_last4', 'N/A')}"
-                for o in order_list
-            ])
-            return f"Here are your detailed order(s):\n{details}"
-        else:
-            return "No orders found."
-    else:
-        return "Please provide your email to look up your orders."
-
-def handle_shipping(user, user_name):
-    if user:
-        shipping_status = user[5] if len(user) > 5 else user[4]
-        return f"Hi {user_name}, your shipping status is: **{shipping_status or 'Unknown'}**."
-    else:
-        return "Please provide your email to check shipping status."
-
-def handle_billing(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Billing'." #place holder
-    else:
-        return "Please provide your email to check shipping status."
-
-def handle_forgot_password(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Forgot Password'."
-    else:
-        return "Please provide your email to check shipping status."
-
-# def handle_change_email(user, user_name): ##not sure if we need this option
-#     if user:
-#         change_email = ""
-#         return "Routing to specialized agent for 'Change Email'."
-#     else:
-#         return "Please provide your email to check shipping status."
-
-def handle_change_address(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Change Address'."
-    else:
-        return "Please provide your email to check shipping status."
-
-def handle_refund(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Refund'."
-    else:
-        return "Please provide your email to check shipping status."
-
-
-def handle_live_agent(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Message live Agent'."
-    else:
-        return "Please provide your email to check shipping status."
 
 def handle_memory(user, user_email):
     # if user_email:
@@ -124,14 +61,7 @@ def handle_memory(user, user_email):
         return "Please provide your email to check shipping status."
 
 INTENT_HANDLERS = {
-    "check order": lambda user, user_name: handle_order(user),
-    "shipping status": lambda user, user_name: handle_shipping(user, user_name),
-    "billing": handle_billing,
-    "forgot password": handle_forgot_password,
-    # "change email": handle_change_email,
-    "change address": handle_change_address,
-    "refund": handle_refund,
-    "live agent": handle_live_agent,
+
     "memory": lambda user, user_name: handle_memory(st.session_state.user_email),
 }
 

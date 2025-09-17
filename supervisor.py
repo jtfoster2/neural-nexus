@@ -26,10 +26,7 @@ class AgentState(TypedDict):
     tool_results: List[str]
     output: Optional[str]
 
-
-"""
-Top-level router. Determines user intent and writes it to state['intent'].
-"""
+#Top-level router. Determines user intent and writes it to state['intent'].
 def supervisor(state: AgentState):
 
     text = state["input"]
