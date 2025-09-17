@@ -3,6 +3,7 @@ import json
 from supervisor import ask_agent
 import db
 from db import detect_intent
+import time
 
 db.init_db()
 
@@ -40,8 +41,20 @@ if not st.session_state.messages:
 
 # --- Display chat history ---
 for msg in st.session_state.messages:
-    role = msg.get("role", "assistant")  # default to assistant if missing
+    role = (msg.get("role") or "assistant").lower()
+    if role not in {"user", "assistant"}:
+        role = "assistant"
     st.chat_message(role).write(msg["content"])
+
+def ask_with_spinner(prompt: str, email: str | None): #Wrapper to show spinner and enforce minimum response time
+    start = time.time()
+    with st.spinner("Thinking…"):
+        reply = ask_agent(prompt, email=email)
+    elapsed = time.time() - start
+    # Enforce a minimum of 3s total to avoid “snap” responses
+    if elapsed < 3:
+        time.sleep(3 - elapsed)
+    return reply
 
     
 
@@ -74,7 +87,7 @@ def handle_option(option, from_chat=False):
     if handler:
         reply = handler(user, user_name)
     else:
-        reply = ask_agent(option, email=user_email)
+        reply = ask_with_spinner(option, email=user_email)
     if user_email and not from_chat:
         st.session_state.messages.append({"role": "user", "content": option})
         st.session_state.messages.append({"role": "assistant", "content": reply})
@@ -123,11 +136,11 @@ if prompt := st.chat_input("Ask me anything about your order, billing, etc.", ke
         if intent:
             reply = handle_option(intent, from_chat=True)
         else:
-            reply = ask_agent(prompt, email=st.session_state.user_email)
+            reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     #Fallback to AI
     else:
-        reply = ask_agent(prompt, email=st.session_state.user_email)
+        reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     #Save messages
     if st.session_state.user_email:
