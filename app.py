@@ -1,8 +1,9 @@
 import streamlit as st
 import json
-from agent import app, ask_agent
+from supervisor import ask_agent
 import db
 from db import detect_intent
+import time
 
 db.init_db()
 
@@ -142,14 +143,7 @@ def handle_memory(user, user_email):
 
 
 INTENT_HANDLERS = {
-    "check order": lambda user, user_name: handle_order(user),
-    "shipping status": lambda user, user_name: handle_shipping(user, user_name),
-    "billing": handle_billing,
-    "forgot password": handle_forgot_password,
-    # "change email": handle_change_email,
-    "change address": handle_change_address,
-    "refund": handle_refund,
-    "live agent": handle_live_agent,
+
     "memory": lambda user, user_name: handle_memory(st.session_state.user_email),
 }
 
@@ -163,7 +157,7 @@ def handle_option(option, from_chat=False):
     if handler:
         reply = handler(user, user_name)
     else:
-        reply = ask_agent(option, email=user_email)
+        reply = ask_with_spinner(option, email=user_email)
     if user_email and not from_chat:
         st.session_state.messages.append({"role": "user", "content": option})
         st.session_state.messages.append(
@@ -212,11 +206,13 @@ if prompt := st.chat_input("Ask me anything about your order, billing, etc.", ke
         if intent:
             reply = handle_option(intent, from_chat=True)
         else:
-            reply = ask_agent(prompt, email=st.session_state.user_email)
+            st.chat_message("user").write(prompt)
+            reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     # Fallback to AI
     else:
-        reply = ask_agent(prompt, email=st.session_state.user_email)
+        st.chat_message("user").write(prompt)
+        reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     # Save messages
     if st.session_state.user_email:
