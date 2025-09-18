@@ -12,6 +12,7 @@ from sendgrid_tool import send_order_email
 os.environ["GEMINI_API_KEY"] = "YOUT_GERMINI_API_KEY"
 os.environ["SENDER_EMAIL"] = "your_verified_sender@example.com"
 
+
 # Define the graph state
 
 

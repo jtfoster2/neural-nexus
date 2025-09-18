@@ -18,8 +18,6 @@ def change_address(query: str) -> str:  # mock tool will update when DB is conne
     except Exception:
         return "Error evaluating expression"
 
-# def email_agent(messages:str) -> str:
-
 
 # --- State definition ---
 class AgentState(TypedDict):  # defines the state structure for the agent, helps with logging
@@ -49,7 +47,6 @@ def planner(state: AgentState):  # decides which tools to call
         f"If you don’t know, say you will connect the user to a human agent.\n"
         f"User query: {query}\n"
         f'{{"reasoning": "...", "tool_calls": ["toolname: argument", ...]}}'
-        #  f'{{"reasoning": "...", "tool_calls": ["toolname: email_agent", ...]}}'
     )
     try:
         parsed = json.loads(response.content)
