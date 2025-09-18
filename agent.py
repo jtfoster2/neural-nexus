@@ -1,10 +1,13 @@
 import os
+import db
 import json
 from typing import TypedDict, List, Optional
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
+from db import get_user_by_email, log_event, update_user_last_option
+
 
 # --- Load .env ---
 load_dotenv()
@@ -17,6 +20,20 @@ def change_address(query: str) -> str:  # mock tool will update when DB is conne
         return str(eval(query))
     except Exception:
         return "Error evaluating expression"
+
+# Tool: get user orders from database
+
+
+def get_user_orders(email: str) -> str:
+    orders, _ = db.get_user_orders(email)
+    return orders or "No orders found."
+
+# Tool: get shipping status from database
+
+
+def get_shipping_status(email: str) -> str:
+    _, shipping_status = db.get_user_orders(email)
+    return shipping_status or "Unknown"
 
 
 # --- State definition ---
@@ -41,7 +58,8 @@ def planner(state: AgentState):  # decides which tools to call
     query = state["input"]
     response = model.invoke(
         f"You are a helpful customer support assistant for CapGemini with tools.\n"
-        f"Tools: change_address.\n"
+        f"Tools: change_address, get_user_orders, get_shipping_status.\n"
+        f"To get order details or shipping status, call the appropriate tool with the user's email.\n"
         f"Decide if you need to call a tool.\n"
         f"Answer politely, and only about our products, services, or company policies.\n"
         f"If you don’t know, say you will connect the user to a human agent.\n"
@@ -59,6 +77,20 @@ def planner(state: AgentState):  # decides which tools to call
 
 # implements the tools, and calls methods, For future use.
 def tool_executor(state: AgentState):
+    # execute tool calls
+    results = []
+    email = state.get("email")
+    for call in state.get("tool_calls", []):
+        if call.startswith("change_address"):
+            arg = call.split(":", 1)[-1].strip()
+            results.append(change_address(arg))
+        elif call.startswith("get_user_orders"):
+            results.append(get_user_orders(email or ""))
+        elif call.startswith("get_shipping_status"):
+            results.append(get_shipping_status(email or ""))
+        else:
+            results.append(f"Unknown tool call: {call}")
+    state["tool_results"] = results
     return state
 
 
@@ -95,12 +127,22 @@ memory = MemorySaver()
 # checkpointer to save state history such as name, or other customer info in same session.
 app = graph.compile(checkpointer=memory)
 
-# --- Helper function for Streamlit ---
+# # --- Helper function for Streamlit ---
+# def ask_agent(query: str, thread_id: str = "default", email: str = None) -> str:
+#     result = app.invoke(
+#         {"input": query},
+#         config={"configurable": {"thread_id": thread_id}}
+#     )
+#     return result["output"]
 
 
-def ask_agent(query: str, thread_id: str = "default") -> str:
+# --- Helper function for Streamlit --- #I modified this fucntion
+def ask_agent(query: str, thread_id: str = "default", email: str = None) -> str:
+    state = {"input": query}
+    if email:
+        state["email"] = email
     result = app.invoke(
-        {"input": query},
+        state,
         config={"configurable": {"thread_id": thread_id}}
     )
     return result["output"]
