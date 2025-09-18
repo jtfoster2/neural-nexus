@@ -1,8 +1,9 @@
 import streamlit as st
 import json
-from agent import app, ask_agent
+from supervisor import ask_agent
 import db
 from db import detect_intent
+import time
 
 db.init_db()
 
@@ -40,73 +41,22 @@ if not st.session_state.messages:
 
 # --- Display chat history ---
 for msg in st.session_state.messages:
-    st.chat_message("user").write(msg["content"])
+    role = (msg.get("role") or "assistant").lower()
+    if role not in {"user", "assistant"}:
+        role = "assistant"
+    st.chat_message(role).write(msg["content"])
+
+def ask_with_spinner(prompt: str, email: str | None): # show spinner while waiting for response
+    start = time.time()
+    with st.spinner("Thinking…"):
+        reply = ask_agent(prompt, email=email)
+        elapsed = time.time() - start
+        # Enforce a minimum of 3s total to avoid “snap” responses
+        if elapsed < 3:
+            time.sleep(3 - elapsed)
+    return reply
+
     
-
-
-#Intent handlers
-def handle_order(user):
-    if user:
-        orders = user[4] if len(user) > 5 else user[3]
-        try:
-            order_list = json.loads(orders) if orders else []
-        except Exception:
-            order_list = []
-        if order_list:
-            details = "\n".join([
-            f"Order ID: {o['id']} | Product: {o['product']} | Qty: {o['qty']} | Price: {o['price']} | Purchase Date: {o.get('purchase_date', 'N/A')} | Status: {o.get('status', 'N/A')} | Card Ending: {o.get('card_last4', 'N/A')}"
-                for o in order_list
-            ])
-            return f"Here are your detailed order(s):\n{details}"
-        else:
-            return "No orders found."
-    else:
-        return "Please provide your email to look up your orders."
-
-def handle_shipping(user, user_name):
-    if user:
-        shipping_status = user[5] if len(user) > 5 else user[4]
-        return f"Hi {user_name}, your shipping status is: **{shipping_status or 'Unknown'}**."
-    else:
-        return "Please provide your email to check shipping status."
-
-def handle_billing(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Billing'." #place holder
-    else:
-        return "Please provide your email to check shipping status."
-
-def handle_forgot_password(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Forgot Password'."
-    else:
-        return "Please provide your email to check shipping status."
-
-# def handle_change_email(user, user_name): ##not sure if we need this option
-#     if user:
-#         change_email = ""
-#         return "Routing to specialized agent for 'Change Email'."
-#     else:
-#         return "Please provide your email to check shipping status."
-
-def handle_change_address(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Change Address'."
-    else:
-        return "Please provide your email to check shipping status."
-
-def handle_refund(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Refund'."
-    else:
-        return "Please provide your email to check shipping status."
-
-
-def handle_live_agent(user, user_name):
-    if user:
-        return "Routing to specialized agent for 'Message live Agent'."
-    else:
-        return "Please provide your email to check shipping status."
 
 def handle_memory(user, user_email):
     # if user_email:
@@ -124,14 +74,7 @@ def handle_memory(user, user_email):
         return "Please provide your email to check shipping status."
 
 INTENT_HANDLERS = {
-    "check order": lambda user, user_name: handle_order(user),
-    "shipping status": lambda user, user_name: handle_shipping(user, user_name),
-    "billing": handle_billing,
-    "forgot password": handle_forgot_password,
-    # "change email": handle_change_email,
-    "change address": handle_change_address,
-    "refund": handle_refund,
-    "live agent": handle_live_agent,
+
     "memory": lambda user, user_name: handle_memory(st.session_state.user_email),
 }
 
@@ -144,7 +87,7 @@ def handle_option(option, from_chat=False):
     if handler:
         reply = handler(user, user_name)
     else:
-        reply = ask_agent(option, email=user_email)
+        reply = ask_with_spinner(option, email=user_email)
     if user_email and not from_chat:
         st.session_state.messages.append({"role": "user", "content": option})
         st.session_state.messages.append({"role": "assistant", "content": reply})
@@ -178,26 +121,19 @@ if prompt := st.chat_input("Ask me anything about your order, billing, etc.", ke
         else:
             reply = "Sorry, we couldn't find your email. Please register or try again."
 
-    #Input requires email but email not provided yet
-    elif any(kw in prompt_lower for kw in [
-        "shipping", "track", "delivery", "order", "purchase",
-        "billing", "invoice", "refund", "change address", "change email",
-        "password"
-    ]) and not st.session_state.user_email:
-        st.session_state.last_intent = prompt_lower
-        reply = "To help with your order, shipping, billing, refund, or address change, please provide your email."
-
     #User has email, handle known keywords
     elif st.session_state.user_email:
         intent = detect_intent(prompt_lower)
         if intent:
             reply = handle_option(intent, from_chat=True)
         else:
-            reply = ask_agent(prompt, email=st.session_state.user_email)
+            st.chat_message("user").write(prompt)
+            reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     #Fallback to AI
     else:
-        reply = ask_agent(prompt, email=st.session_state.user_email)
+        st.chat_message("user").write(prompt)
+        reply = ask_with_spinner(prompt, email=st.session_state.user_email)
 
     #Save messages
     if st.session_state.user_email:
