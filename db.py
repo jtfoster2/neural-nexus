@@ -159,6 +159,7 @@ def detect_intent(user_input: str):
     return None
 
 
+
 init_db()
 
 #mock data for users

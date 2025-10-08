@@ -7,10 +7,13 @@ import time
 
 db.init_db()
 
-st.set_page_config(page_title="Customer Support Agent")
+# st.set_page_config(page_title="Customer Support Agent")
+
+st.set_page_config(page_title="AI Customer Service", layout="wide") ##added
+
 
 # --- Title ---
-st.markdown("<h1 style='text-align: center;'>Customer Support Agent</h1>", unsafe_allow_html=True)
+# st.markdown("<h1 style='text-align: center;'>Customer Support Agent</h1>", unsafe_allow_html=True)
 
 # --- Session state for chat history ---
 if "messages" not in st.session_state:
@@ -28,9 +31,69 @@ if "last_intent" not in st.session_state:
 if "check_order_followup" not in st.session_state:
     st.session_state.check_order_followup = False
 
-#Load user chat history - Not working properly atm
+if "chat_started" not in st.session_state:  
+    st.session_state.chat_started = False   
+
+
+#Sidebar
+with st.sidebar:
+    #use columns to center the image
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image("robot_icon.png", width=100)
+
+    
+    # st.title("AI Customer Service")
+    # st.write("How can we help you today?")
+    
+    #centered title and subtitle
+    st.markdown("<h3 style='text-align: center;'>AI Customer Service</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>How can we help you today?</p>", unsafe_allow_html=True)
+
+    #use column to center the startchat button
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Start Chat"):
+            st.session_state.chat_started = True
+    
+    st.markdown("---")
+
+    st.markdown("""
+    <style>
+    .custom-button {
+        background-color: rgba(0,0,0,0);
+        border: none;
+        color: black;
+        padding: 10px 20px;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 5px;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+    .custom-button:hover {
+        background-color: rgba(0,0,0,0.15)
+    }
+    </style>
+    <div style='text-align: left;'>
+        <button class='custom-button'>💬 Chat History</button>
+        <button class='custom-button'>⚙️ Settings</button>
+        <button class='custom-button'>⏻ Log Out</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+#Stop if chat not started         
+if not st.session_state.chat_started:
+    st.info("Click **Start Chat** in the sidebar to begin.")
+    st.stop()
+
+
+#Load user chat history           
 if st.session_state.user_email and not st.session_state.messages:
     st.session_state.messages = db.load_messages(st.session_state.user_email)
+
 
 #Greeting text
 if not st.session_state.messages:
@@ -46,6 +109,8 @@ for msg in st.session_state.messages:
         role = "assistant"
     st.chat_message(role).write(msg["content"])
 
+
+
 def ask_with_spinner(prompt: str, email: str | None): # show spinner while waiting for response
     start = time.time()
     with st.spinner("Thinking…"):
@@ -59,15 +124,6 @@ def ask_with_spinner(prompt: str, email: str | None): # show spinner while waiti
     
 
 def handle_memory(user, user_email):
-    # if user_email:
-    #     history = db.load_messages(user_email)
-    #     reply = ""
-    #     for msg in history:
-    #         role_color = "blue" if msg["role"] == "user" else "green"
-    #         reply += f"<div style='color:{role_color}'><b>{msg['role'].title()}:</b> {msg['content']}</div>\n"
-    #     return reply or "No chat history found."
-    # else:
-    #     return "No chat history found."
     if user:
         return "Fetching chat history Please wait...."
     else:
