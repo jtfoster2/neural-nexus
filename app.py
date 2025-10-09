@@ -13,6 +13,29 @@ if "db_initialized" not in st.session_state:
     db.add_order_item("ord_001", "SKU-001", "Widget", 2, 500)
     db.add_payment("pay_001", "demo@example.com", "ord_001", 1080, status="succeessful")
     db.add_conversation("conv_001", "demo@example.com", "User: Hi\nAssistant: Hello!")
+
+    db.add_user("panda@example.com", "hashed_pw", "Panda", None, "+15551231234")
+    db.add_order("ord_201", "panda@example.com", subtotal_cents=2998, tax_cents=180, shipping_cents=300, shipping_address="42 Dam Creek Road, San Diego, CA 92101", status="delivered")
+    db.add_order_item("ord_201", "SKU-201", "Wireless Mouse", 2, 1499)
+    db.add_payment("pay_201", "panda@example.com", "ord_201", 3478, status="successful", method="card", provider="stripe")
+    db.add_conversation("conv_201", "panda@example.com", "User: Hi, is my mouse order on the way?\nAssistant: Your order ORD201 has been delivered successfully!")
+    
+    db.add_user("alice.johnson@example.com", "hashed_pw", "Alice", "Johnson", "+15553456789")
+    db.add_order("ord_202", "alice.johnson@example.com",
+             subtotal_cents=4999, tax_cents=300, shipping_cents=250,
+             shipping_address="100 Peach Tree Blvd, Atlanta, GA 30318",
+             status="preparing")
+    db.add_order_item("ord_202", "SKU-202", "Mechanical Keyboard", 1, 4999)
+    db.add_payment("pay_202", "alice.johnson@example.com", "ord_202", 5549, status="pending", method="card", provider="square")
+    db.add_conversation("conv_202", "alice.johnson@example.com", "User: Can I change my shipping address?\nAssistant: Sure! Please provide the new address for order ORD202.")
+
+    db.add_user("bob.smith@example.com", "hashed_pw", "Bob", "Smith", "+15557654321")
+    db.add_order("ord_203", "bob.smith@example.com",subtotal_cents=5997, tax_cents=360, shipping_cents=200, shipping_address="9 Charger Way, Austin, TX 78701", status="shipped")
+    db.add_order_item("ord_203", "SKU-203", "USB-C Charger", 3, 1999)
+    db.add_payment("pay_203", "bob.smith@example.com", "ord_203", 6557, status="successful", method="paypal", provider="paypal")
+    db.add_conversation("conv_203", "bob.smith@example.com", "User: Has my charger shipped yet?\nAssistant: Your order ORD203 has been shipped and is on the way!")
+
+    
     print (db.get_all_users())  #DEBUGGING    
 
 
