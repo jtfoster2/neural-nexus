@@ -11,7 +11,8 @@ class AgentState(TypedDict):
     output: Optional[str]
 
 def shipping_agent(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    print("[AGENT] shipping_agent selected")
+    user = db.get_user(state.get("email") or "")
     if user:
         # Adjust index to your actual column for shipping status
         shipping_status = None
@@ -26,5 +27,5 @@ def shipping_agent(state: AgentState) -> AgentState:
 
 #Tool: get shipping status from database
 def get_shipping_status(email: str) -> str:
-    _, shipping_status = db.get_user_orders(email)
+    _, shipping_status = db.get_user(email)
     return shipping_status or "Unknown"

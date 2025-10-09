@@ -2,7 +2,7 @@
 from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-import db
+import db_old
 
 # --- Import specialist agents ---
 from agents.order_agent import order_agent
@@ -30,9 +30,13 @@ class AgentState(TypedDict):
 def supervisor(state: AgentState):
 
     text = state["input"]
+    print(text)
+
 
     #Finds intent using keyword matching and LLM fallback
-    intent = (db.detect_intent(text) or "").strip().lower()
+    intent = (detect_intent(text) or "").strip().lower()
+
+
 
     if not intent:
         try:
@@ -62,6 +66,9 @@ def supervisor(state: AgentState):
             intent = "other"
 
     state["intent"] = intent or "other"
+
+    #DEBUGGING
+    print(f"[DEBUG] Detected intent: {state.get('intent')}")
     return state
 
 
@@ -75,17 +82,18 @@ graph.add_node("shipping_agent", shipping_agent)
 graph.add_node("billing_agent", billing_agent)
 graph.add_node("account_agent", account_agent)
 graph.add_node("return_agent", return_agent)
-graph.add_node("agent_router", live_agent_router)
-graph.add_node("memory_agent", memory_agent)
 graph.add_node("live_agent_router", live_agent_router)
-
+graph.add_node("memory_agent", memory_agent)
 graph.add_node("general_agent", general_agent)
 
 graph.set_entry_point("supervisor")
 
 
 def route_decider(state: AgentState):
-    return (state.get("intent") or "other").lower()
+    route = (state.get("intent") or "other").lower().strip()
+    print(f"[ROUTER] Intent '{route}' → agent node:")
+    return route
+
 
 
 graph.add_conditional_edges(
@@ -100,6 +108,7 @@ graph.add_conditional_edges(
         "refund": "return_agent",
         "return": "return_agent",
         "message live agent": "live_agent_router",
+        "live agent": "live_agent_router",
         "memory": "memory_agent",
         "other": "general_agent", # fallback to your general agent
     },
@@ -108,7 +117,7 @@ graph.add_conditional_edges(
 # Specialists Agents
 for terminal in [
     "order_agent", "shipping_agent", "billing_agent", "account_agent", 
-    "return_agent", "agent_router", "memory_agent"
+    "return_agent", "live_agent_router", "memory_agent"
 ]:
     graph.add_edge(terminal, END)
 
@@ -132,3 +141,25 @@ def ask_agent(query: str, thread_id: str = "default", email: str | None = None) 
     }
     result = app.invoke(state, config={"configurable": {"thread_id": thread_id}})
     return result.get("output") or ""
+
+#this is to detect keywords when users type-in the input
+INTENT_KEYWORDS = {
+    "check order": ["order", "orders", "check order", "my order", "track order"],
+    "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
+    "billing": ["billing", "payment", "charge", "invoice"],
+    "change address": ["change address", "update address", "new address"],
+    "change email": ["change email", "update email", "new email"],
+    "forgot password": ["forgot password", "reset password", "lost password", "password"],
+    "refund": ["refund", "return", "money back"],
+    "email agent": ["email agent", "send email"],
+    "message live agent": ["live agent", "human agent", "chat with agent"],
+    "memory": ["history", "memory", "chat history"]
+}
+
+def detect_intent(user_input: str):
+    """Match user input against keywords to detect intent."""
+    text = user_input.lower()
+    for intent, keywords in INTENT_KEYWORDS.items():
+        if any(keyword in text for keyword in keywords):
+            return intent
+    return None

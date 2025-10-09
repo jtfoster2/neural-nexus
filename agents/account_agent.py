@@ -11,7 +11,9 @@ class AgentState(TypedDict):
     output: Optional[str]
 
 def account_agent(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    print("[AGENT] account_agent selected")
+    user = db.get_user(state.get("email") or "")
+    print(user)
     state["output"] = (
         "Routing to specialized **Account** agent."
         if user else
@@ -20,7 +22,7 @@ def account_agent(state: AgentState) -> AgentState:
     return state
 
 def forgot_password_agent(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    user = db.get_user(state.get("email") or "")
     state["output"] = (
         "I can help start a password reset. Please confirm the email on file."
         if user else

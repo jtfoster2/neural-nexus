@@ -1,188 +1,198 @@
-import sqlite3, os
-from datetime import datetime
+#!/usr/bin/env python3
 
+import sqlite3
+from pathlib import Path
+from contextlib import closing
+from typing import Optional, Iterable, Any
 
-DB_FILE = "users.db"
+DB_PATH = Path(__file__).parent / "agentic_ai.db"
 
-def init_db():
-    """Initialize the SQLite database and create tables if they don't exist."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        last_option TEXT,
-        orders TEXT,
-        shipping_status TEXT          
-    )
-    """)
+# ---------------------------------------------------------------
+# Schema
+# ---------------------------------------------------------------
+SCHEMA_SQL = """
+PRAGMA foreign_keys = ON;
 
-    #chat messages table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS chat_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_name TEXT,
-        role TEXT,
-        content TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+CREATE TABLE IF NOT EXISTS users (
+    email               TEXT PRIMARY KEY,
+    password_hash       TEXT,
+    first_name          TEXT,
+    last_name           TEXT,
+    phone               TEXT,
+    created_at          TEXT DEFAULT (datetime('now')),
+    is_active           INTEGER DEFAULT 1
+);
 
-    #event log table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS event_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        timestamp DATETIME,
-        event_type TEXT,
-        event_detail TEXT,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-    conn.commit()
-    conn.close()
+CREATE TABLE IF NOT EXISTS orders (
+    order_id            TEXT PRIMARY KEY,
+    email               TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    status              TEXT DEFAULT 'pending',
+    subtotal_cents      INTEGER DEFAULT 0,
+    tax_cents           INTEGER DEFAULT 0,
+    shipping_cents      INTEGER DEFAULT 0,
+    discount_cents      INTEGER DEFAULT 0,
+    total_cents         INTEGER,
+    currency            TEXT DEFAULT 'USD',
+    shipping_name       TEXT,
+    shipping_address    TEXT,
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT
+);
 
-def add_user(name, email, orders=None, shipping_status=None, last_option=None):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO users (name, email, orders, shipping_status, last_option) VALUES (?, ?, ?, ?, ?)",
-        (name, email, orders, shipping_status, last_option)
-    )
-    conn.commit()
-    conn.close()
+CREATE TABLE IF NOT EXISTS order_items (
+    order_item_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id            TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+    sku                 TEXT,
+    name                TEXT,
+    qty                 INTEGER,
+    unit_price_cents    INTEGER,
+    line_total_cents    INTEGER
+);
 
-def get_user_by_email(email):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
-    user = cursor.fetchone()
-    conn.close()
-    return user
+CREATE TABLE IF NOT EXISTS payments (
+    payment_id          TEXT PRIMARY KEY,
+    email               TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    order_id            TEXT REFERENCES orders(order_id) ON DELETE SET NULL,
+    amount_cents        INTEGER,
+    currency            TEXT DEFAULT 'USD',
+    status              TEXT,
+    method              TEXT,
+    provider            TEXT,
+    provider_txn_id     TEXT,
+    created_at          TEXT DEFAULT (datetime('now'))
+);
 
-def update_user_last_option(email, last_option):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET last_option = ? WHERE email = ?", (last_option, email))
-    conn.commit()
-    conn.close()
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    conversation_id     TEXT PRIMARY KEY,
+    email               TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    started_at          TEXT DEFAULT (datetime('now')),
+    ended_at            TEXT,
+    conversation_text   TEXT
+);
+"""
 
-def log_event(user_id, event_type, event_detail=""):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO event_log (user_id, timestamp, event_type, event_detail) VALUES (?, ?, ?, ?)",
-        (user_id, datetime.now(), event_type, event_detail)
-    )
-    conn.commit()
-    conn.close()
+# ---------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------
+def get_connection() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
 
+def _exec(sql: str, params: Iterable[Any]) -> None:
+    with closing(get_connection()) as conn:
+        conn.execute(sql, tuple(params))
+        conn.commit()
 
-def clear_all_users():
-    """Delete all users and their chat messages from the database."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM users")
-    cursor.execute("DELETE FROM chat_messages")
-    conn.commit()
-    conn.close()
+def _query(sql: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
+    with closing(get_connection()) as conn:
+        cur = conn.execute(sql, tuple(params))
+        return cur.fetchall()
 
-def save_message(user_name, role, message):
-    #convert list/tuple to string
-    if isinstance(message, (tuple, list)):
-        msg_to_save = " ".join(str(m) for m in message)
-    else:
-        msg_to_save = str(message)
+def init_db() -> None:
+    with closing(get_connection()) as conn:
+        conn.executescript(SCHEMA_SQL)
+        conn.commit()
+    print(f"Database initialized at {DB_PATH}")
 
-    conn = sqlite3.connect(DB_FILE)  #use same DB_FILE as init_db
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO chat_messages (user_name, role, content) VALUES (?, ?, ?)",
-        (user_name, role, msg_to_save)
-    )
-    conn.commit()
-    conn.close()
+# ---------------------------------------------------------------
+# USERS
+# ---------------------------------------------------------------
+def add_user(email: str, password_hash: Optional[str] = None,
+             first_name: Optional[str] = None, last_name: Optional[str] = None,
+             phone: Optional[str] = None, is_active: int = 1) -> None:
+    _exec("""
+        INSERT OR REPLACE INTO users (email, password_hash, first_name, last_name, phone, is_active)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (email.lower(), password_hash, first_name, last_name, phone, is_active))
 
+def get_user(email: str) -> Optional[sqlite3.Row]:
+    rows = _query("SELECT * FROM users WHERE email = ?", (email.lower(),))
+    return rows[0] if rows else None
 
+def set_user_password_hash(email: str, password_hash: str): _exec("UPDATE users SET password_hash=? WHERE email=?", (password_hash, email.lower()))
+def set_user_first_name(email: str, first_name: str): _exec("UPDATE users SET first_name=? WHERE email=?", (first_name, email.lower()))
+def set_user_last_name(email: str, last_name: str): _exec("UPDATE users SET last_name=? WHERE email=?", (last_name, email.lower()))
+def set_user_phone(email: str, phone: str): _exec("UPDATE users SET phone=? WHERE email=?", (phone, email.lower()))
+def set_user_is_active(email: str, is_active: int): _exec("UPDATE users SET is_active=? WHERE email=?", (int(is_active), email.lower()))
 
-def load_messages(user_name):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT role, content FROM chat_messages WHERE user_name = ? ORDER BY id",
-        (user_name,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"role": role, "content": content} for role, content in rows]
+# ---------------------------------------------------------------
+# ORDERS
+# ---------------------------------------------------------------
+def add_order(order_id: str, email: str, subtotal_cents: int = 0, tax_cents: int = 0,
+              shipping_cents: int = 0, discount_cents: int = 0, currency: str = "USD",
+              status: str = "pending", shipping_name: Optional[str] = None,
+              shipping_address: Optional[str] = None, total_cents: Optional[int] = None):
+    if total_cents is None:
+        total_cents = subtotal_cents + tax_cents + shipping_cents - discount_cents
+    _exec("""
+        INSERT OR REPLACE INTO orders
+        (order_id, email, status, subtotal_cents, tax_cents, shipping_cents,
+         discount_cents, total_cents, currency, shipping_name, shipping_address)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (order_id, email.lower(), status, subtotal_cents, tax_cents, shipping_cents,
+          discount_cents, total_cents, currency, shipping_name, shipping_address))
 
-def update_user_order(email, orders=None, shipping_status=None):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    if orders:
-        cursor.execute("UPDATE users SET orders = ? WHERE email = ?", (orders, email))
-    if shipping_status:
-        cursor.execute("UPDATE users SET shipping_status = ? WHERE email = ?", (shipping_status, email))
-    conn.commit()
-    conn.close()
+# --- Key setters for Orders ---
+def set_order_status(order_id: str, status: str): _exec("UPDATE orders SET status=?, updated_at=datetime('now') WHERE order_id=?", (status, order_id))
+def set_order_shipping_name(order_id: str, name: str): _exec("UPDATE orders SET shipping_name=?, updated_at=datetime('now') WHERE order_id=?", (name, order_id))
+def set_order_shipping_address(order_id: str, address: str): _exec("UPDATE orders SET shipping_address=?, updated_at=datetime('now') WHERE order_id=?", (address, order_id))
+def set_order_total(order_id: str, total_cents: int): _exec("UPDATE orders SET total_cents=?, updated_at=datetime('now') WHERE order_id=?", (total_cents, order_id))
 
-def get_user_orders(email):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT orders, shipping_status FROM users WHERE email = ?", (email,))
-    result = cursor.fetchone()
-    conn.close()
-    return result if result else (None, None)
+def list_orders_for_user(email: str): return _query("SELECT * FROM orders WHERE email=? ORDER BY created_at DESC", (email.lower(),))
 
-#this is to detect keywords when users type-in the input
-INTENT_KEYWORDS = {
-    "check order": ["order", "orders", "check order", "my order", "track order"],
-    "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
-    "billing": ["billing", "payment", "charge", "invoice"],
-    "change address": ["change address", "update address", "new address"],
-    "change email": ["change email", "update email", "new email"],
-    "forgot password": ["forgot password", "reset password", "lost password", "password"],
-    "refund": ["refund", "return", "money back"],
-    "email agent": ["email agent", "send email"],
-    "message live agent": ["live agent", "human agent", "chat with agent"],
-    "memory": ["history", "memory", "chat history"]
-}
+# ---------------------------------------------------------------
+# ORDER ITEMS
+# ---------------------------------------------------------------
+def add_order_item(order_id: str, sku: str, name: str, qty: int, unit_price_cents: int):
+    line_total_cents = qty * unit_price_cents
+    _exec("""
+        INSERT INTO order_items (order_id, sku, name, qty, unit_price_cents, line_total_cents)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (order_id, sku, name, qty, unit_price_cents, line_total_cents))
 
-def detect_intent(user_input: str):
-    """Match user input against keywords to detect intent."""
-    text = user_input.lower()
-    for intent, keywords in INTENT_KEYWORDS.items():
-        if any(keyword in text for keyword in keywords):
-            return intent
-    return None
+# ---------------------------------------------------------------
+# PAYMENTS
+# ---------------------------------------------------------------
+def add_payment(payment_id: str, email: str, order_id: Optional[str], amount_cents: int,
+                status: str = "processing", method: str = "card", provider: str = "stripe",
+                currency: str = "USD", provider_txn_id: Optional[str] = None):
+    _exec("""
+        INSERT OR REPLACE INTO payments
+        (payment_id, email, order_id, amount_cents, currency, status, method, provider, provider_txn_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (payment_id, email.lower(), order_id, amount_cents, currency, status, method, provider, provider_txn_id))
 
+# --- Key setters for Payments ---
+def set_payment_status(payment_id: str, status: str): _exec("UPDATE payments SET status=? WHERE payment_id=?", (status, payment_id))
+def set_payment_method(payment_id: str, method: str): _exec("UPDATE payments SET method=? WHERE payment_id=?", (method, payment_id))
 
-init_db()
+def list_payments_for_user(email: str): return _query("SELECT * FROM payments WHERE email=? ORDER BY created_at DESC", (email.lower(),))
 
-#mock data for users
+# ---------------------------------------------------------------
+# AI CONVERSATIONS
+# ---------------------------------------------------------------
+def add_conversation(conversation_id: str, email: str, conversation_text: str):
+    _exec("""
+        INSERT OR REPLACE INTO ai_conversations (conversation_id, email, conversation_text)
+        VALUES (?, ?, ?)
+    """, (conversation_id, email.lower(), conversation_text))
+
+# --- Key setters for Conversations ---
+def set_conversation_ended(conversation_id: str): _exec("UPDATE ai_conversations SET ended_at=datetime('now') WHERE conversation_id=?", (conversation_id,))
+def set_conversation_text(conversation_id: str, text: str): _exec("UPDATE ai_conversations SET conversation_text=? WHERE conversation_id=?", (text, conversation_id))
+
+def list_conversations_for_user(email: str): return _query("SELECT * FROM ai_conversations WHERE email=? ORDER BY started_at DESC", (email.lower(),))
+
+# ---------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------
 if __name__ == "__main__":
     init_db()
-    clear_all_users()
-
-    add_user(
-        "Panda",
-        "panda@example.com",
-        '[{"id":"ORD001","product":"Mouse","qty":2,"price":"$29.99","purchase_date":"2025-09-01","status":"Delivered","card_last4":"1234"}]',
-        "Delivered"
-    )
-    add_user(
-        "Alice Johnson",
-        "alice.johnson@example.com",
-        '[{"id":"ORD002","product":"Keyboard","qty":1,"price":"$49.99","purchase_date":"2025-09-05","status":"Preparing","card_last4":"5678"}]',
-        "Preparing"
-    )
-    add_user(
-        "Bob Smith",
-        "bob.smith@example.com",
-        '[{"id":"ORD003","product":"USB-C Charger","qty":3,"price":"$19.99","purchase_date":"2025-09-07","status":"Shipped","card_last4":"9876"}]',
-        "Shipped"
-    )
-
-    print("Database initialized and mock users added!")
+    add_user("demo@example.com", "hashed_pw", "Demo", "User", "+15555550123")
+    add_order("ord_001", "demo@example.com", subtotal_cents=1000, tax_cents=80)
+    add_order_item("ord_001", "SKU-001", "Widget", 2, 500)
+    add_payment("pay_001", "demo@example.com", "ord_001", 1080, status="succeeded")
+    add_conversation("conv_001", "demo@example.com", "User: Hi\nAssistant: Hello!")
+    print("✅ Example data seeded.")

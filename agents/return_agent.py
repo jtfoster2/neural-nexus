@@ -11,7 +11,8 @@ class AgentState(TypedDict):
     output: Optional[str]
 
 def return_agent(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    print("[AGENT] return_agent selected")
+    user = db.get_user(state.get("email") or "")
     state["output"] = (
         "Routing to specialized **Refunds** agent."
         if user else

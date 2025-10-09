@@ -12,7 +12,8 @@ class AgentState(TypedDict):
     output: Optional[str]
 
 def billing_agent(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    print("[AGENT] billing_agent selected")
+    user = db.get_user(state.get("email") or "")
     state["output"] = (
         "Routing to specialized agent for **Billing**."
         if user else

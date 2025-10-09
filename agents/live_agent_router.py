@@ -11,7 +11,8 @@ class AgentState(TypedDict):
     output: Optional[str]
 
 def live_agent_router(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    print("[AGENT] live_agent_router selected")
+    user = db.get_user(state.get("email") or "")
     state["output"] = (
         "Connecting you with a live agent now… (placeholder)"
         if user else

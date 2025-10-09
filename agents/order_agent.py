@@ -12,7 +12,8 @@ class AgentState(TypedDict):
     output: Optional[str]
 
 def order_agent(state: AgentState) -> AgentState:
-    user = db.get_user_by_email(state.get("email") or "")
+    print("[AGENT] order_agent selected")
+    user = db.get_user(state.get("email") or "")
     if user:
         # Adjust columns to match your db schema
         # For example, orders may be stored as JSON in a specific column

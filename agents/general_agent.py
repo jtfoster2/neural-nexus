@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
-from db import get_user_by_email, log_event, update_user_last_option
+from db_old import get_user_by_email, log_event, update_user_last_option
 
 
 # --- Load .env ---
@@ -54,6 +54,7 @@ def _compose_prompt(state: AgentState) -> str:
     )
 
 def general_agent(state: AgentState) -> AgentState:
+    print("[AGENT] general_agent selected")
     prompt = _compose_prompt(state)
     if model is None:
         state["output"] = (
