@@ -106,10 +106,15 @@ def add_user(email: str, password_hash: Optional[str] = None,
         INSERT OR REPLACE INTO users (email, password_hash, first_name, last_name, phone, is_active)
         VALUES (?, ?, ?, ?, ?, ?)
     """, (email.lower(), password_hash, first_name, last_name, phone, is_active))
+    print(f"User {email} added/updated.")
 
 def get_user(email: str) -> Optional[sqlite3.Row]:
     rows = _query("SELECT * FROM users WHERE email = ?", (email.lower(),))
+    print(f"User {email} retrieved.")
     return rows[0] if rows else None
+
+def get_all_users() -> list[sqlite3.Row]:
+    return _query("SELECT * FROM users")
 
 def set_user_password_hash(email: str, password_hash: str): _exec("UPDATE users SET password_hash=? WHERE email=?", (password_hash, email.lower()))
 def set_user_first_name(email: str, first_name: str): _exec("UPDATE users SET first_name=? WHERE email=?", (first_name, email.lower()))
@@ -133,6 +138,7 @@ def add_order(order_id: str, email: str, subtotal_cents: int = 0, tax_cents: int
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (order_id, email.lower(), status, subtotal_cents, tax_cents, shipping_cents,
           discount_cents, total_cents, currency, shipping_name, shipping_address))
+    print(f"Order {order_id} for user {email} added/updated.")
 
 # --- Key setters for Orders ---
 def set_order_status(order_id: str, status: str): _exec("UPDATE orders SET status=?, updated_at=datetime('now') WHERE order_id=?", (status, order_id))
@@ -151,6 +157,7 @@ def add_order_item(order_id: str, sku: str, name: str, qty: int, unit_price_cent
         INSERT INTO order_items (order_id, sku, name, qty, unit_price_cents, line_total_cents)
         VALUES (?, ?, ?, ?, ?, ?)
     """, (order_id, sku, name, qty, unit_price_cents, line_total_cents))
+    print(f"Order item {sku} for order {order_id} added.")
 
 # ---------------------------------------------------------------
 # PAYMENTS
@@ -163,6 +170,7 @@ def add_payment(payment_id: str, email: str, order_id: Optional[str], amount_cen
         (payment_id, email, order_id, amount_cents, currency, status, method, provider, provider_txn_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (payment_id, email.lower(), order_id, amount_cents, currency, status, method, provider, provider_txn_id))
+    print(f"Payment {payment_id} for user {email} added/updated.")
 
 # --- Key setters for Payments ---
 def set_payment_status(payment_id: str, status: str): _exec("UPDATE payments SET status=? WHERE payment_id=?", (status, payment_id))
@@ -178,6 +186,7 @@ def add_conversation(conversation_id: str, email: str, conversation_text: str):
         INSERT OR REPLACE INTO ai_conversations (conversation_id, email, conversation_text)
         VALUES (?, ?, ?)
     """, (conversation_id, email.lower(), conversation_text))
+    print(f"Conversation {conversation_id} for user {email} added/updated.")
 
 # --- Key setters for Conversations ---
 def set_conversation_ended(conversation_id: str): _exec("UPDATE ai_conversations SET ended_at=datetime('now') WHERE conversation_id=?", (conversation_id,))
@@ -195,4 +204,4 @@ if __name__ == "__main__":
     add_order_item("ord_001", "SKU-001", "Widget", 2, 500)
     add_payment("pay_001", "demo@example.com", "ord_001", 1080, status="succeeded")
     add_conversation("conv_001", "demo@example.com", "User: Hi\nAssistant: Hello!")
-    print("✅ Example data seeded.")
+    print("Example data seeded.")

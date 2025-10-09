@@ -12,12 +12,12 @@ class AgentState(TypedDict):
 
 def shipping_agent(state: AgentState) -> AgentState:
     print("[AGENT] shipping_agent selected")
-    user = db.get_user(state.get("email") or "")
+    user = get_shipping_status(state.get("email") or "")
     if user:
         # Adjust index to your actual column for shipping status
         shipping_status = None
         for col in user:
-            if isinstance(col, str) and col.lower() in {"in transit", "delivered", "processing", "unknown"}:
+            if isinstance(col, str) and col.lower() in {"in transit", "delivered", "processing", "shipped", "unknown"}:
                 shipping_status = col
                 break
         state["output"] = f"Your shipping status is: **{shipping_status or 'Unknown'}**."
@@ -27,5 +27,5 @@ def shipping_agent(state: AgentState) -> AgentState:
 
 #Tool: get shipping status from database
 def get_shipping_status(email: str) -> str:
-    _, shipping_status = db.get_user(email)
+    shipping_status = db.list_orders_for_user(email)
     return shipping_status or "Unknown"
