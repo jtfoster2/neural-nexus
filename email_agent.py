@@ -21,7 +21,7 @@ class EmailAgentState(TypedDict):
 
 
 # Define the LLM and bind it to the SendGrid tool
-llm = ChatGoogleGenerativeAI(model="gemini-pro-1.5,temperature=0")
+llm = ChatGoogleGenerativeAI(model="gemini-pro-1.5", temperature=0)
 llm_with_tools = llm.bind_tools([send_email])
 
 # The main node that calls the LLM
