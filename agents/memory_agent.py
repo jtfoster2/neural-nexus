@@ -13,10 +13,4 @@ class AgentState(TypedDict):
 
 def memory_agent(state: AgentState) -> AgentState:
     print("[AGENT] memory_agent selected")
-    user = db.get_user(state.get("email") or "")
-    state["output"] = (
-        "Fetching chat history…"
-        if user else
-        "Please provide your email to fetch chat history."
-    )
     return state

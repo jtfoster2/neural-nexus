@@ -94,7 +94,50 @@ def init_db() -> None:
     with closing(get_connection()) as conn:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
+        ensure_example_data()
     print(f"Database initialized at {DB_PATH}")
+
+def ensure_example_data():
+    
+    with closing(get_connection()) as conn:
+        cur = conn.cursor()
+
+        cur.execute("SELECT COUNT(*) FROM users")
+        if cur.fetchone()[0] > 0:
+            print("Data is present.")
+            return
+        
+        # Seed example users, orders, payments, conversations
+        add_user("demo@example.com", "hashed_pw", "Demo", "User", "+15555550123")
+        add_order("ord_001", "demo@example.com", subtotal_cents=1000, tax_cents=80, shipping_cents=150, shipping_address="123 Demo St, Atlanta, Ga 30318", status="shipped")
+        add_order_item("ord_001", "SKU-001", "Widget", 2, 500)
+        add_payment("pay_001", "demo@example.com", "ord_001", 1080, status="succeessful")
+        add_conversation("conv_001", "demo@example.com", "User: Hi\nAssistant: Hello!")
+
+        add_user("panda@example.com", "hashed_pw", "Panda", None, "+15551231234")
+        add_order("ord_201", "panda@example.com", subtotal_cents=2998, tax_cents=180, shipping_cents=300, shipping_address="42 Dam Creek Road, San Diego, CA 92101", status="delivered")
+        add_order_item("ord_201", "SKU-201", "Wireless Mouse", 2, 1499)
+        add_payment("pay_201", "panda@example.com", "ord_201", 3478, status="successful", method="card", provider="stripe")
+        add_conversation("conv_201", "panda@example.com", "User: Hi, is my mouse order on the way?\nAssistant: Your order ORD201 has been delivered successfully!")
+        
+        add_user("alice.johnson@example.com", "hashed_pw", "Alice", "Johnson", "+15553456789")
+        add_order("ord_202", "alice.johnson@example.com",
+                subtotal_cents=4999, tax_cents=300, shipping_cents=250,
+                shipping_address="100 Peach Tree Blvd, Atlanta, GA 30318",
+                status="preparing")
+        add_order_item("ord_202", "SKU-202", "Mechanical Keyboard", 1, 4999)
+        add_payment("pay_202", "alice.johnson@example.com", "ord_202", 5549, status="pending", method="card", provider="square")
+        add_conversation("conv_202", "alice.johnson@example.com", "User: Can I change my shipping address?\nAssistant: Sure! Please provide the new address for order ORD202.")
+
+        add_user("bob.smith@example.com", "hashed_pw", "Bob", "Smith", "+15557654321")
+        add_order("ord_203", "bob.smith@example.com",subtotal_cents=5997, tax_cents=360, shipping_cents=200, shipping_address="9 Charger Way, Austin, TX 78701", status="shipped")
+        add_order_item("ord_203", "SKU-203", "USB-C Charger", 3, 1999)
+        add_payment("pay_203", "bob.smith@example.com", "ord_203", 6557, status="successful", method="paypal", provider="paypal")
+        add_conversation("conv_203", "bob.smith@example.com", "User: Has my charger shipped yet?\nAssistant: Your order ORD203 has been shipped and is on the way!")
+
+        conn.commit()
+        print("Example data seeded.")
+
 
 # ---------------------------------------------------------------
 # USERS
