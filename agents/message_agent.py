@@ -33,8 +33,8 @@ class AgentState(TypedDict, total=False):
 
 def send_email(to_email: str, subject: str, value: str):
 
-    sendgrid_key = os.environ.get("SENDGRID_API_KEY")
-    verified_sender = os.environ.get("SENDGRID_VERIFIED_SENDER")
+    sendgrid_key = os.environ.get("SENDGRID_API_KEY") # Your SendGrid API key
+    verified_sender = os.environ.get("SENDGRID_VERIFIED_SENDER") # Your verified sender email
     if not sendgrid_key:
         raise ValueError("Missing SENDGRID_API_KEY environment variable")
 
@@ -45,7 +45,7 @@ def send_email(to_email: str, subject: str, value: str):
         "personalizations": [
             {"to": [{"email": to_email}]}
         ],
-        "from": {"email": verified_sender},  # ← change to your verified sender
+        "from": {"email": verified_sender},  
         "subject": subject,
         "content": [
             {"type": "text/plain", "value": value}
