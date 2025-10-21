@@ -58,6 +58,7 @@ def supervisor(state: AgentState):
                 "refund": "refund",
                 "live agent": "live agent",
                 "email agent": "message agent",
+                "message agent": "message agent",
                 "live agent": "live agent",
                 "memory": "memory",
                 "chat history": "memory",
@@ -117,6 +118,7 @@ graph.add_conditional_edges(
         "refund": "return_agent",
         "return": "return_agent",
         "message": "message_agent",
+        "message agent": "message_agent",
         "email agent": "message_agent",
         "live agent": "live_agent_router",
         "live agent": "live_agent_router",
@@ -192,6 +194,7 @@ INTENT_KEYWORDS = {
     "change email": ["change email", "update email", "new email"],
     "forgot password": ["forgot password", "reset password", "lost password", "password"],
     "refund": ["refund", "return", "money back"],
+    "message agent": ["message agent", "notify user", "email user", "send confirmation"],
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
     "memory": ["history", "memory", "chat history"]
