@@ -31,10 +31,38 @@ class AgentState(TypedDict, total=False):
     cc: Optional[List[str]]
     bcc: Optional[List[str]]
 
-def send_email(to_email, subject, value):
-   sendgrid_key = os.environ["SENDGRID_API_KEY"]
-   send_grid = sendgrid.SendGridAPIClient(api_key=sendgrid_key)
-   send_grid.client.mail.send.post(request_body=data)
+def send_email(to_email: str, subject: str, value: str):
+
+    sendgrid_key = os.environ.get("SENDGRID_API_KEY")
+    verified_sender = os.environ.get("SENDGRID_VERIFIED_SENDER")
+    if not sendgrid_key:
+        raise ValueError("Missing SENDGRID_API_KEY environment variable")
+
+    send_grid = sendgrid.SendGridAPIClient(api_key=sendgrid_key)
+
+    # Build JSON payload
+    data = {
+        "personalizations": [
+            {"to": [{"email": to_email}]}
+        ],
+        "from": {"email": verified_sender},  # ← change to your verified sender
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": value}
+        ]
+    }
+
+    # Perform the API request
+    response = send_grid.client.mail.send.post(request_body=data)
+
+    # Return simplified result for agent logging
+    return {
+        "success": response.status_code in (200, 202),
+        "status_code": response.status_code,
+        "body": response.body.decode() if response.body else None,
+        "message_id": response.headers.get("X-Message-Id")
+    }
+
 
 # ------------- Tool Layer -------------
 Tool = Callable[..., Any]
