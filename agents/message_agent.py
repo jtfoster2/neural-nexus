@@ -21,13 +21,13 @@ class AgentState(TypedDict, total=False):
     confidence: float
 
     # Messaging-specific fields
-    email: Optional[str]         # recipient
-    name: Optional[str]          # recipient display name (optional)
-    order_id: Optional[str]      # e.g., "ord_001"
-    event_type: Optional[str]    # e.g., "shipped" "delivered" "issue"
-    details: Optional[str]       # extra details to include in body
-    subject: Optional[str]       # override automatic subject
-    body: Optional[str]          # override automatic body  
+    email: Optional[str]        
+    name: Optional[str]          
+    order_id: Optional[str]      
+    event_type: Optional[str]    
+    details: Optional[str]       
+    subject: Optional[str]       
+    body: Optional[str]          
     cc: Optional[List[str]]
     bcc: Optional[List[str]]
 
