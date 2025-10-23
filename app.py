@@ -242,4 +242,3 @@ if st.session_state.user_email:
         if st.button("Billing", use_container_width=True):
             st.session_state.pending_prompt = "Billing"
             st.rerun()
-    

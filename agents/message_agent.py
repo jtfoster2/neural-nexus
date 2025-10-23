@@ -67,22 +67,20 @@ def send_email(to_email: str, subject: str, value: str):
 # ------------- Tool Layer -------------
 Tool = Callable[..., Any]
 
-TOOL_REGISTRY: Dict[str, Dict[str, Any]] = { #Add more tools as needed
+TOOL_REGISTRY = {
     "notify:send_email": {
-        "fn": lambda to, subject, body, cc=None, bcc=None: send_email.invoke({
-            "to": to,
-            "subject": subject,
-            "body": body,
-            "cc": cc or [],
-            "bcc": bcc or [],
-    }),
-    "schema": {
+        "fn": lambda to, subject, body, cc=None, bcc=None: send_email(
+            to_email=to,
+            subject=subject,
+            value=body,          # match your send_email signature
+        ),
+        "schema": {
             "to": "str (required, email)",
             "subject": "str (required)",
             "body": "str (required)",
             "cc": "list[str] (optional)",
             "bcc": "list[str] (optional)",
-            },
+        },
         "desc": "Send an email via SendGrid with optional CC/BCC."
     }
 }
@@ -336,10 +334,11 @@ def message_agent(state: AgentState) -> AgentState:
     except Exception as e:
         state.setdefault("tool_calls", [])
         state.setdefault("tool_results", [])
-        state["tool_results"].append(f"[FATAL] {e!r}")
-        state["output"] = "Sorry—something went wrong while sending your message."
+        state["tool_results"].append(f"[FATAL] {type(e).__name__}: {e}")
+        state["output"] = f"Email failed: {type(e).__name__}: {e}"
         state["confidence"] = 0.2
         return state
+        
 
 
 
