@@ -182,7 +182,7 @@ INTENT_KEYWORDS = {
     "forgot password": ["forgot password", "reset password", "lost password", "password"],
     "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
     "refund": ["refund", "return", "money back"],
-    "message agent": ["message agent", "notify user", "email user", "send confirmation"],
+    "message agent": ["message agent", "notify user", "email user", "send confirmation", "send me an email"],
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
     "memory": ["history", "memory", "chat history"],
