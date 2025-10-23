@@ -194,7 +194,7 @@ INTENT_KEYWORDS = {
     "change email": ["change email", "update email", "new email"],
     "forgot password": ["forgot password", "reset password", "lost password", "password"],
     "refund": ["refund", "return", "money back"],
-    "message agent": ["message agent", "notify user", "email user", "send confirmation"],
+    "message agent": ["message agent", "notify user", "email user", "send confirmation", "send me an email"],
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
     "memory": ["history", "memory", "chat history"]

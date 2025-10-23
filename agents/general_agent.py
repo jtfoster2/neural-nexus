@@ -34,7 +34,7 @@ model = ChatGoogleGenerativeAI(
 
 
 SYSTEM_PROMPT = (
-        f"You are a helpful customer support assistant for CapGemini with tools.\n"
+        f"You are a helpful customer support assistant for Capgemini with tools.\n"
         f"Tools: change_address, get_user_orders, get_shipping_status.\n"
         f"To get order details or shipping status, call the appropriate tool with the user's email.\n"
         f"Decide if you need to call a tool.\n"
