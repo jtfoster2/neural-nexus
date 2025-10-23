@@ -1,7 +1,8 @@
-# supervisor.py
 from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+import os
+from pathlib import Path
 
 # --- Import specialist agents ---
 from agents.order_agent import order_agent
@@ -12,6 +13,7 @@ from agents.message_agent import message_agent
 from agents.return_agent import return_agent
 from agents.live_agent_router import live_agent_router
 from agents.memory_agent import memory_agent
+from agents.policy_agent import policy_agent
 
 # --- Import generalist agent components ---
 from agents.general_agent import general_agent, model  #Fallback LLM
@@ -36,6 +38,12 @@ def supervisor(state: AgentState):
 
     #Finds intent using keyword matching and LLM fallback
     intent = (detect_intent(text) or "").strip().lower()
+
+    if (intent == "policy"): #inject policy text into state for policy agent
+        txt = os.getenv("return_policy.txt") 
+        state["return_policy"] = txt
+        print("[SUPERVISOR] Injected return_policy into state for policy agent.")
+
 
 
 
@@ -62,6 +70,9 @@ def supervisor(state: AgentState):
                 "live agent": "live agent",
                 "memory": "memory",
                 "chat history": "memory",
+                "policy": "policy",                 # ← add
+                "return policy": "policy",          # ← add
+                "warranty": "policy",  
                 "other": "other", #general_agent
             }
             intent = known.get(label, "other")
@@ -94,6 +105,7 @@ graph.add_node("return_agent", return_agent)
 graph.add_node("live_agent_router", live_agent_router)
 graph.add_node("memory_agent", memory_agent)
 graph.add_node("message_agent", message_agent)
+graph.add_node("policy_agent", policy_agent)
 graph.add_node("general_agent", general_agent)
 
 graph.set_entry_point("supervisor")
@@ -121,7 +133,7 @@ graph.add_conditional_edges(
         "message agent": "message_agent",
         "email agent": "message_agent",
         "live agent": "live_agent_router",
-        "live agent": "live_agent_router",
+        "policy": "policy_agent", 
         "memory": "memory_agent",
         "other": "general_agent", # fallback to your general agent
     },
@@ -130,7 +142,7 @@ graph.add_conditional_edges(
 # Specialists Agents
 for terminal in [
     "order_agent", "shipping_agent", "billing_agent", "account_agent", 
-    "return_agent", "message_agent", "live_agent_router", "memory_agent"
+    "return_agent", "message_agent", "live_agent_router", "memory_agent", "policy_agent"
 ]:
     graph.add_edge(terminal, END)
 
@@ -139,34 +151,9 @@ graph.add_edge("general_agent", END)
 
 memory = MemorySaver()
 app = graph.compile(checkpointer=memory)
-
-
-def ask_agent(query: str, thread_id: str = "default", email: str | None = None) -> str:
-
-    state: AgentState = {
-        "input": query,
-        "email": email,
-        "intent": None,
-        "reasoning": None,
-        "tool_calls": [],
-        "tool_results": [],
-        "output": None,
-        "routing_msg": None,
-    }
-    result = app.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    routing_msg = result.get("routing_msg") #extract routing message
-    output = result.get("output") or ""
-    if routing_msg:
-        return f"{routing_msg}\n\n{output}"
-    else:
-        return output
     
 def ask_agent_events(query: str, thread_id: str = "default", email: str | None = None):
-    """
-    Yields tuples of (kind, text) as the graph progresses:
-      ("routing", "Routing to **…** agent...")
-      ("output",  "<final agent reply>")
-    """
+
     state: AgentState = {
         "input": query,
         "email": email,
@@ -193,11 +180,13 @@ INTENT_KEYWORDS = {
     "change address": ["change address", "update address", "new address"],
     "change email": ["change email", "update email", "new email"],
     "forgot password": ["forgot password", "reset password", "lost password", "password"],
+    "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
     "refund": ["refund", "return", "money back"],
     "message agent": ["message agent", "notify user", "email user", "send confirmation"],
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
-    "memory": ["history", "memory", "chat history"]
+    "memory": ["history", "memory", "chat history"],
+    
 }
 
 def detect_intent(user_input: Optional[str]):
