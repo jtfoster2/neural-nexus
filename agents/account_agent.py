@@ -12,13 +12,6 @@ class AgentState(TypedDict):
 
 def account_agent(state: AgentState) -> AgentState:
     print("[AGENT] account_agent selected")
-    user = db.get_user(state.get("email") or "")
-    print(user)
-    state["output"] = (
-        "Routing to specialized **Account** agent."
-        if user else
-        "Please provide your email to look into your account."
-    )
     return state
 
 def forgot_password_agent(state: AgentState) -> AgentState:

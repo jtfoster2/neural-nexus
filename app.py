@@ -3,48 +3,13 @@ import uuid
 import json
 import time
 import db
-from supervisor import ask_agent
+from supervisor import ask_agent_events
 
+# --- Session setup ---
 if "db_initialized" not in st.session_state:
     db.init_db()
     st.session_state.db_initialized = True
-    db.add_user("demo@example.com", "hashed_pw", "Demo", "User", "+15555550123")
-    db.add_order("ord_001", "demo@example.com", subtotal_cents=1000, tax_cents=80, shipping_cents=150, shipping_address="123 Demo St, Atlanta, Ga 30318", status="shipped")
-    db.add_order_item("ord_001", "SKU-001", "Widget", 2, 500)
-    db.add_payment("pay_001", "demo@example.com", "ord_001", 1080, status="succeessful")
-    db.add_conversation("conv_001", "demo@example.com", "User: Hi\nAssistant: Hello!")
 
-    db.add_user("panda@example.com", "hashed_pw", "Panda", None, "+15551231234")
-    db.add_order("ord_201", "panda@example.com", subtotal_cents=2998, tax_cents=180, shipping_cents=300, shipping_address="42 Dam Creek Road, San Diego, CA 92101", status="delivered")
-    db.add_order_item("ord_201", "SKU-201", "Wireless Mouse", 2, 1499)
-    db.add_payment("pay_201", "panda@example.com", "ord_201", 3478, status="successful", method="card", provider="stripe")
-    db.add_conversation("conv_201", "panda@example.com", "User: Hi, is my mouse order on the way?\nAssistant: Your order ORD201 has been delivered successfully!")
-    
-    db.add_user("alice.johnson@example.com", "hashed_pw", "Alice", "Johnson", "+15553456789")
-    db.add_order("ord_202", "alice.johnson@example.com",
-             subtotal_cents=4999, tax_cents=300, shipping_cents=250,
-             shipping_address="100 Peach Tree Blvd, Atlanta, GA 30318",
-             status="preparing")
-    db.add_order_item("ord_202", "SKU-202", "Mechanical Keyboard", 1, 4999)
-    db.add_payment("pay_202", "alice.johnson@example.com", "ord_202", 5549, status="pending", method="card", provider="square")
-    db.add_conversation("conv_202", "alice.johnson@example.com", "User: Can I change my shipping address?\nAssistant: Sure! Please provide the new address for order ORD202.")
-
-    db.add_user("bob.smith@example.com", "hashed_pw", "Bob", "Smith", "+15557654321")
-    db.add_order("ord_203", "bob.smith@example.com",subtotal_cents=5997, tax_cents=360, shipping_cents=200, shipping_address="9 Charger Way, Austin, TX 78701", status="shipped")
-    db.add_order_item("ord_203", "SKU-203", "USB-C Charger", 3, 1999)
-    db.add_payment("pay_203", "bob.smith@example.com", "ord_203", 6557, status="successful", method="paypal", provider="paypal")
-    db.add_conversation("conv_203", "bob.smith@example.com", "User: Has my charger shipped yet?\nAssistant: Your order ORD203 has been shipped and is on the way!")
-
-    
-    print (db.get_all_users())  #DEBUGGING    
-
-
-    print("Example data seeded.")
-
-st.set_page_config(page_title="Customer Support Agent", layout="wide")
-
-
-# --- Session setup ---
 if "user_email" not in st.session_state:
     st.session_state.user_email = None
 
@@ -114,17 +79,6 @@ if not st.session_state.chat_started:
     st.info("Click **Start Chat** in the sidebar to begin.")
     st.stop()
 
-def ask_with_spinner(prompt: str, UUID, email: str | None):
-    """Show spinner while waiting for response."""
-    start = time.time()
-    with st.spinner("Thinking…"):
-        reply = ask_agent(prompt, UUID, email)
-        elapsed = time.time() - start
-        # Enforce a minimum of 3s delay for realism
-        if elapsed < 3:
-            time.sleep(3 - elapsed)
-    return reply
-
 # --- Conversation ID ---
 if st.session_state.user_email:
     #st.caption(f"Session ID: `{st.session_state.conversation_id}`") #DEBUGGING
@@ -158,48 +112,96 @@ if not st.session_state.user_email:
         st.success(f"Welcome, {st.session_state.user_email}!")
         st.rerun()
 
+def send_message_to_agent(prompt: str):
+
+    user = db.get_user(st.session_state.user_email)
+    if not user:
+        db.add_user(st.session_state.user_email)
+
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
+
+
+    routing_shown = False
+    final_reply = None
+
+    with st.spinner("Thinking…"):
+        
+        start = time.time()
+        elapsed = time.time() - start # Enforce a minimum of 3s delay for realism
+        if elapsed < 3:
+            time.sleep(3 - elapsed)
+
+        for kind, text in ask_agent_events(
+            prompt,
+            st.session_state.conversation_id,
+            st.session_state.user_email
+        ):
+            if kind == "routing" and not routing_shown:
+                # show routing as its own bubble and persist it
+                st.chat_message("assistant").write(f"{text}")
+                st.session_state.messages.append({"role": "assistant", "content": f"{text}"})
+                routing_shown = True
+            elif kind == "output":
+                # final answer bubble + persist
+                st.chat_message("assistant").write(text)
+                st.session_state.messages.append({"role": "assistant", "content": text})
+                final_reply = text
+
+    db.add_conversation(
+        conversation_id=st.session_state.conversation_id,
+        email=st.session_state.user_email,
+        conversation_text=json.dumps(st.session_state.messages)
+    )
+
+    st.rerun()
+
+    return final_reply
+
+    
 # --- Chat input ---
 if st.session_state.user_email:
     prompt = st.chat_input("Ask me anything about your order, billing, etc.")
     if prompt:
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        # Make sure user exists in DB before logging
-        user = db.get_user(st.session_state.user_email)
-        if not user:
-            db.add_user(st.session_state.user_email)
-
-        # Generate AI reply with spinner
-        st.chat_message("user").write(prompt)
-        reply = ask_with_spinner(prompt, st.session_state.conversation_id, st.session_state.user_email)
-
-        # Save reply to chat history
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-
-        # Persist conversation as JSON
-        db.add_conversation(
-            conversation_id=st.session_state.conversation_id,
-            email=st.session_state.user_email,
-            conversation_text=json.dumps(st.session_state.messages)
-        )
-
-        st.rerun()
+        send_message_to_agent(prompt)
+    if st.session_state.get("pending_prompt"):
+        pending_prompt = st.session_state.pop("pending_prompt")
+        send_message_to_agent(pending_prompt)
 else:
     st.stop()
 
-def handle_option(option, from_chat=False):
+def handle_option(option, from_chat=False): ####Modified to handle quick option buttons with streaming reply####
     user_email = st.session_state.user_email
-    reply = ask_with_spinner(option, st.session_state.conversation_id, email=user_email)
-    if user_email and not from_chat:
-        st.session_state.messages.append({"role": "user", "content": option})
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-        db.add_conversation(
-            conversation_id=st.session_state.conversation_id,
-            email=st.session_state.user_email,
-            conversation_text=json.dumps(st.session_state.messages)
-        )
-        st.rerun()
-    return reply
+
+    routing_shown = False
+    final_reply = None
+
+    with st.spinner("Thinking…"):
+        for kind, text in ask_agent_events(option, st.session_state.conversation_id, email=user_email):
+            if kind == "routing" and not routing_shown:
+                if user_email and not from_chat:
+                    st.session_state.messages.append({"role": "user", "content": option})
+                st.chat_message("assistant").write(f"{text}")
+                start = time.time()
+                elapsed = time.time() - start
+                # Enforce a minimum of 3s delay for realism
+                if elapsed < 3:
+                    time.sleep(3 - elapsed)
+                st.session_state.messages.append({"role": "assistant", "content": f"{text}"})
+                routing_shown = True
+            elif kind == "output":
+                st.chat_message("assistant").write(text)
+                st.session_state.messages.append({"role": "assistant", "content": text})
+                final_reply = text
+
+    db.add_conversation(
+        conversation_id=st.session_state.conversation_id,
+        email=st.session_state.user_email,
+        conversation_text=json.dumps(st.session_state.messages)
+    )
+    st.rerun()
+    return final_reply
+
 
 #Quick Options Menu
 if st.session_state.user_email:
@@ -210,24 +212,31 @@ if st.session_state.user_email:
         handle_option(option)
     with col1:
         if st.button("Forgot Password", use_container_width=True):
-            handle_option_button("Forgot Password")
+            st.session_state.pending_prompt = "Forgot Password"
+            st.rerun()
     with col2:
         if st.button("Refund", use_container_width=True):
-            handle_option_button("Refund")
+            st.session_state.pending_prompt = "Refund"
+            st.rerun()
     with col3:
         if st.button("Check Order", use_container_width=True):
-            handle_option_button("Check Order")
+            st.session_state.pending_prompt = "Check Order"
+            st.rerun()
     with col4:
         if st.button("Shipping Status", use_container_width=True):
-            handle_option_button("Shipping Status")
+            st.session_state.pending_prompt = "Shipping Status"
+            st.rerun()
     col5, col6, col7 = st.columns(3)
     with col5:
         if st.button("Change Address", use_container_width=True):
-            handle_option_button("Change Address")
+            st.session_state.pending_prompt = "Change Address"
+            st.rerun()
     with col6:
         if st.button("Live Agent", use_container_width=True):
-            handle_option_button("Live Agent")
+            st.session_state.pending_prompt = "Live Agent"
+            st.rerun()
     with col7:
         if st.button("Billing", use_container_width=True):
-            handle_option_button("Billing")
+            st.session_state.pending_prompt = "Billing"
+            st.rerun()
     
