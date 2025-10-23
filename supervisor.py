@@ -144,6 +144,11 @@ app = graph.compile(checkpointer=memory)
 
 
 def ask_agent(query: str, thread_id: str = "default", email: str | None = None) -> str:
+    """
+    Yields tuples of (kind, text) as the graph progresses:
+      ("routing", "Routing to **…** agent...")
+      ("output",  "<final agent reply>")
+    """
 
     state: AgentState = {
         "input": query,
