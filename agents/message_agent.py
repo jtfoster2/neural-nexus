@@ -222,58 +222,68 @@ class MessageAgent:
         details: Optional[str],
         name: Optional[str],
     ) -> tuple[str, str]:
-        
+        """
+        Build (subject, body) from order + event. Safe for f-strings (no backslashes inside {...}).
+        """
         et = (event_type or "status_update").strip().lower()
-        normalized_id = f"Order {order_id}" if order_id else "Your order"
+        pretty_id = f"Order {order_id}" if order_id else "Your order"
         recipient = name or "there"
 
+        # Helper: ensure optional details line(s) end with a newline when present
+        def details_block(s: Optional[str], extra_newlines: int = 1) -> str:
+            if not s:
+                return ""
+            return s + ("\n" * extra_newlines)
+
         if et in {"shipped", "shipping", "label_created"}:
-            subject = f"{normalized_id} has shipped"
+            subject = f"{pretty_id} has shipped"
             body = (
                 f"Hi {recipient},\n\n"
-                f"Good news — {normalized_id} has shipped.\n"
-                f"{(details + '\\n') if details else ''}"
+                f"Good news — {pretty_id} has shipped.\n"
+                f"{details_block(details)}"
                 "We’ll share more tracking updates as they’re available.\n\n"
                 "Thanks!"
             )
         elif et in {"delivered"}:
-            subject = f"{normalized_id} was delivered"
+            subject = f"{pretty_id} was delivered"
             body = (
                 f"Hi {recipient},\n\n"
-                f"{normalized_id} has been delivered. "
-                f"{(details + '\\n\\n') if details else ''}"
+                f"{pretty_id} has been delivered.\n"
+                f"{details_block(details, extra_newlines=2)}"
                 "If anything looks off, just reply to this email.\n\n"
                 "Best,"
             )
         elif et in {"in_transit", "eta_update"}:
-            subject = f"{normalized_id}: in transit"
+            subject = f"{pretty_id}: in transit"
             body = (
                 f"Hi {recipient},\n\n"
-                f"{normalized_id} is currently in transit.\n"
-                f"{(details + '\\n') if details else ''}"
+                f"{pretty_id} is currently in transit.\n"
+                f"{details_block(details)}"
                 "We’ll keep you posted on the ETA.\n\n"
                 "Thanks!"
             )
         elif et in {"issue", "action_required"}:
-            subject = f"Action needed on {normalized_id}"
+            subject = f"Action needed on {pretty_id}"
             body = (
                 f"Hi {recipient},\n\n"
-                f"We need a quick confirmation regarding {normalized_id}.\n"
-                f"{(details + '\\n') if details else ''}"
+                "We need a quick confirmation regarding "
+                f"{pretty_id}.\n"
+                f"{details_block(details)}"
                 "Reply to this email and we’ll take care of it.\n\n"
                 "Thanks!"
             )
         else:
-            subject = f"{normalized_id}: update"
+            subject = f"{pretty_id}: update"
             body = (
                 f"Hi {recipient},\n\n"
-                f"Here’s an update on {normalized_id}.\n"
-                f"{(details + '\\n') if details else ''}"
+                f"Here’s an update on {pretty_id}.\n"
+                f"{details_block(details)}"
                 "Reach out if you have questions.\n\n"
                 "Best,"
             )
 
         return subject, body
+
 
     # --------- interpretation & UX ---------
 
