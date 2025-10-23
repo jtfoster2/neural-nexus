@@ -13,7 +13,6 @@ from agents.return_agent import return_agent
 from agents.live_agent_router import live_agent_router
 from agents.memory_agent import memory_agent
 
-
 # --- Import generalist agent components ---
 from agents.general_agent import general_agent, model  # Fallback LLM
 
@@ -135,7 +134,6 @@ for terminal in [
 ]:
     graph.add_edge(terminal, END)
 
-
 # Generalist chain
 graph.add_edge("general_agent", END)
 
@@ -144,11 +142,6 @@ app = graph.compile(checkpointer=memory)
 
 
 def ask_agent(query: str, thread_id: str = "default", email: str | None = None) -> str:
-    """
-    Yields tuples of (kind, text) as the graph progresses:
-      ("routing", "Routing to **…** agent...")
-      ("output",  "<final agent reply>")
-    """
 
     state: AgentState = {
         "input": query,
@@ -162,7 +155,37 @@ def ask_agent(query: str, thread_id: str = "default", email: str | None = None) 
     }
     result = app.invoke(
         state, config={"configurable": {"thread_id": thread_id}})
-    return result.get("output") or ""
+    routing_msg = result.get("routing_msg")  # extract routing message
+    output = result.get("output") or ""
+    if routing_msg:
+        return f"{routing_msg}\n\n{output}"
+    else:
+        return output
+
+
+def ask_agent_events(query: str, thread_id: str = "default", email: str | None = None):
+    """
+    Yields tuples of (kind, text) as the graph progresses:
+      ("routing", "Routing to **…** agent...")
+      ("output",  "<final agent reply>")
+    """
+    state: AgentState = {
+        "input": query,
+        "email": email,
+        "intent": None,
+        "reasoning": None,
+        "tool_calls": [],
+        "tool_results": [],
+        "output": None,
+        "routing_msg": None,
+    }
+
+    # Stream state updates as nodes finish
+    for s in app.stream(state, config={"configurable": {"thread_id": thread_id}}, stream_mode="values"):
+        if s.get("routing_msg"):
+            yield ("routing", s["routing_msg"])
+        if s.get("output"):
+            yield ("output", s["output"])
 
 
 # this is to detect keywords when users type-in the input
