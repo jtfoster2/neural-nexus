@@ -45,7 +45,6 @@ with st.sidebar:
     with col2:
         if st.button("Start Chat"):
             st.session_state.chat_started = True
-    
     st.markdown("---")
     st.markdown("""
     <style>
@@ -112,6 +111,12 @@ if not st.session_state.user_email:
         st.success(f"Welcome, {st.session_state.user_email}!")
         st.rerun()
 
+    if st.button("Continue as Guest"):
+        st.session_state.chat_started = True
+        st.session_state.user_name = "Guest"
+        st.session_state.user_email = " "
+        st.success(f"Welcome, {st.session_state.user_name}!")
+        st.rerun()
 def send_message_to_agent(prompt: str):
 
     user = db.get_user(st.session_state.user_email)
