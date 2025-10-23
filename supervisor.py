@@ -71,19 +71,15 @@ def supervisor(state: AgentState):
 
     state["intent"] = intent or "other"
 
-<<<<<<< HEAD
-    # DEBUGGING
-    print(f"[DEBUG] Detected intent: {state.get('intent')}")
-=======
     # States what agent is being routed to
     # ----------------
     agent_name = state.get('intent')
     routing_msg = f"Routing to **{agent_name}** agent..."
     state["routing_msg"] = routing_msg
-    print(f"[DEBUG************] state['routing_msg']: {state['routing_msg']}") #debugging
+    # debugging
+    print(f"[DEBUG************] state['routing_msg']: {state['routing_msg']}")
     # ----------------
 
->>>>>>> e028ed5850e007d17e1fe5cad2b3918335b5daa9
     return state
 
 
@@ -134,13 +130,8 @@ graph.add_conditional_edges(
 
 # Specialists Agents
 for terminal in [
-<<<<<<< HEAD
     "order_agent", "shipping_agent", "billing_agent", "account_agent",
-    "return_agent", "live_agent_router", "memory_agent"
-=======
-    "order_agent", "shipping_agent", "billing_agent", "account_agent", 
     "return_agent", "message_agent", "live_agent_router", "memory_agent"
->>>>>>> e028ed5850e007d17e1fe5cad2b3918335b5daa9
 ]:
     graph.add_edge(terminal, END)
 
@@ -164,43 +155,9 @@ def ask_agent(query: str, thread_id: str = "default", email: str | None = None) 
         "output": None,
         "routing_msg": None,
     }
-<<<<<<< HEAD
     result = app.invoke(
         state, config={"configurable": {"thread_id": thread_id}})
     return result.get("output") or ""
-=======
-    result = app.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    routing_msg = result.get("routing_msg") #extract routing message
-    output = result.get("output") or ""
-    if routing_msg:
-        return f"{routing_msg}\n\n{output}"
-    else:
-        return output
-    
-def ask_agent_events(query: str, thread_id: str = "default", email: str | None = None):
-    """
-    Yields tuples of (kind, text) as the graph progresses:
-      ("routing", "Routing to **…** agent...")
-      ("output",  "<final agent reply>")
-    """
-    state: AgentState = {
-        "input": query,
-        "email": email,
-        "intent": None,
-        "reasoning": None,
-        "tool_calls": [],
-        "tool_results": [],
-        "output": None,
-        "routing_msg": None,
-    }
-
-    # Stream state updates as nodes finish
-    for s in app.stream(state, config={"configurable": {"thread_id": thread_id}}, stream_mode="values"):
-        if s.get("routing_msg"):
-            yield ("routing", s["routing_msg"])
-        if s.get("output"):
-            yield ("output", s["output"])
->>>>>>> e028ed5850e007d17e1fe5cad2b3918335b5daa9
 
 
 # this is to detect keywords when users type-in the input
@@ -212,22 +169,14 @@ INTENT_KEYWORDS = {
     "change email": ["change email", "update email", "new email"],
     "forgot password": ["forgot password", "reset password", "lost password", "password"],
     "refund": ["refund", "return", "money back"],
-<<<<<<< HEAD
-    "message live agent": ["live agent", "human agent", "chat with agent"],
-    "memory": ["history", "memory", "chat history"]
-}
-
-
-def detect_intent(user_input: str):
-=======
     "message agent": ["message agent", "notify user", "email user", "send confirmation"],
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
     "memory": ["history", "memory", "chat history"]
 }
 
+
 def detect_intent(user_input: Optional[str]):
->>>>>>> e028ed5850e007d17e1fe5cad2b3918335b5daa9
     """Match user input against keywords to detect intent."""
     text = (user_input or "").lower()
     for intent, keywords in INTENT_KEYWORDS.items():

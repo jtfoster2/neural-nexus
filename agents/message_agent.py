@@ -11,6 +11,7 @@ from sendgrid_tool import send_email
 # --- Load .env ---
 load_dotenv()
 
+
 class AgentState(TypedDict, total=False):
     input: str
     intent: Optional[str]
@@ -21,15 +22,16 @@ class AgentState(TypedDict, total=False):
     confidence: float
 
     # Messaging-specific fields
-    email: Optional[str]        
-    name: Optional[str]          
-    order_id: Optional[str]      
-    event_type: Optional[str]    
-    details: Optional[str]       
-    subject: Optional[str]       
-    body: Optional[str]          
+    email: Optional[str]
+    name: Optional[str]
+    order_id: Optional[str]
+    event_type: Optional[str]
+    details: Optional[str]
+    subject: Optional[str]
+    body: Optional[str]
     cc: Optional[List[str]]
     bcc: Optional[List[str]]
+
 
 def send_email(to_email: str, subject: str, value: str):
 
@@ -67,7 +69,7 @@ def send_email(to_email: str, subject: str, value: str):
 # ------------- Tool Layer -------------
 Tool = Callable[..., Any]
 
-TOOL_REGISTRY: Dict[str, Dict[str, Any]] = { #Add more tools as needed
+TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {  # Add more tools as needed
     "notify:send_email": {
         "fn": lambda to, subject, body, cc=None, bcc=None: send_email.invoke({
             "to": to,
@@ -75,14 +77,14 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = { #Add more tools as needed
             "body": body,
             "cc": cc or [],
             "bcc": bcc or [],
-    }),
-    "schema": {
+        }),
+        "schema": {
             "to": "str (required, email)",
             "subject": "str (required)",
             "body": "str (required)",
             "cc": "list[str] (optional)",
             "bcc": "list[str] (optional)",
-            },
+        },
         "desc": "Send an email via SendGrid with optional CC/BCC."
     }
 }
@@ -99,7 +101,6 @@ class MessageAgent:
     - Calls tools with retries
     - Returns a summary in state['output']
     """
-    
 
     def __init__(self, max_retries: int = 2, backoff_s: float = 0.5):
         self.max_retries = max_retries
@@ -128,17 +129,19 @@ class MessageAgent:
         # Validate required fields
         problems = self._validate(state)
         if problems:
-            state["output"] = "I can’t send the email yet:\n- " + "\n- ".join(problems)
+            state["output"] = "I can’t send the email yet:\n- " + \
+                "\n- ".join(problems)
             state["confidence"] = 0.3
             return state
 
-        # Plan 
+        # Plan
         plan = self._plan(state)
 
-        # Act 
+        # Act
         observations = []
         for step in plan:
-            obs = self._call_tool_with_retries(step["tool"], step["args"], state)
+            obs = self._call_tool_with_retries(
+                step["tool"], step["args"], state)
             observations.append({"step": step, "obs": obs})
 
         # Observe/Reason
@@ -165,7 +168,8 @@ class MessageAgent:
 
     def _validate(self, state: AgentState) -> List[str]:
         issues = []
-        if not state.get("email") or not EMAIL_REGEX.fullmatch(state["email"]):  # type: ignore[index]
+        # type: ignore[index]
+        if not state.get("email") or not EMAIL_REGEX.fullmatch(state["email"]):
             issues.append("Missing or invalid recipient email.")
         if not state.get("subject"):
             issues.append("Missing subject.")
@@ -197,10 +201,12 @@ class MessageAgent:
         while True:
             attempt += 1
             try:
-                state["tool_calls"].append(f"{tool_name}({', '.join(f'{k}={v!r}' for k,v in args.items())})")
+                state["tool_calls"].append(
+                    f"{tool_name}({', '.join(f'{k}={v!r}' for k, v in args.items())})")
                 result = fn(**args)  # send_email.invoke({...})
                 # Keep a short preview in logs
-                state["tool_results"].append(self._truncate_for_log({"ok": True, "result": result}))
+                state["tool_results"].append(
+                    self._truncate_for_log({"ok": True, "result": result}))
                 return result
             except Exception as e:
                 state["tool_results"].append(f"[ERROR] {tool_name}: {e!r}")
@@ -222,7 +228,7 @@ class MessageAgent:
         details: Optional[str],
         name: Optional[str],
     ) -> tuple[str, str]:
-        
+
         et = (event_type or "status_update").strip().lower()
         normalized_id = f"Order {order_id}" if order_id else "Your order"
         recipient = name or "there"
@@ -293,7 +299,8 @@ class MessageAgent:
                 message_id = raw.get("message_id") or raw.get("id")
             elif isinstance(raw, (list, tuple)) and raw:
                 # e.g., SendGrid responses
-                message_id = getattr(raw[0], "message_id", None) if hasattr(raw[0], "message_id") else None
+                message_id = getattr(raw[0], "message_id", None) if hasattr(
+                    raw[0], "message_id") else None
                 sent_ok = True
             else:
                 sent_ok = True
@@ -313,6 +320,7 @@ class MessageAgent:
 
 # --------- Backward-compatible function ---------
 
+
 def message_agent(state: AgentState) -> AgentState:
     """
     Backward-compatible entry point that now delegates to the agent class.
@@ -330,6 +338,3 @@ def message_agent(state: AgentState) -> AgentState:
         state["output"] = "Sorry—something went wrong while sending your message."
         state["confidence"] = 0.2
         return state
-
-
-
