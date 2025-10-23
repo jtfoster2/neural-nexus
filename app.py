@@ -5,6 +5,9 @@ import time
 import db
 from supervisor import ask_agent_events
 
+with open("return_policy.txt", "r", encoding="utf-8") as f:
+    st.session_state.policy_text = f.read()
+
 # --- Session setup ---
 if "db_initialized" not in st.session_state:
     db.init_db()
