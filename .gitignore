@@ -5,3 +5,6 @@ __pycache__/
 venv/
 include/
 *.db
+\n# OS / editor artifacts
+.DS_Store
+SELECT

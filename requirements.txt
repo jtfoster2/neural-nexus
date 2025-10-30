@@ -6,3 +6,4 @@ python-dotenv==1.0.1
 streamlit==1.36.0
 pydantic==1.10.14
 sendgrid
+passlib[bcrypt]>=1.7.4
