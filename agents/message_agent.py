@@ -120,16 +120,10 @@ class MessageAgent:
                 details=state.get("details"),
                 name=state.get("name"),
             )
-            state.setdefault("subject", subj)
-            state.setdefault("body", body)
 
-            ######################
-            ## This snippet code only works on Ploy's machine for sending a msg to my email.
-            ## The agent substitute generates text when subject/body are empty.
             state["subject"] = state.get("subject") or subj
             state["body"] = state.get("body") or body
-            # The end of the snippet code.
-            ######################
+
 
         # Validate required fields
         problems = self._validate(state)
