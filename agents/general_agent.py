@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
-from db_old import get_user_by_email, log_event, update_user_last_option
 
 
 # --- Load .env ---
