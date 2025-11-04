@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
-from db_old import get_user_by_email, log_event, update_user_last_option
 
 
 # --- Load .env ---
@@ -34,7 +33,7 @@ model = ChatGoogleGenerativeAI(
 
 
 SYSTEM_PROMPT = (
-        f"You are a helpful customer support assistant for Capgemini with tools.\n"
+        f"You are a helpful customer support assistant for CapGemini with tools.\n"
         f"Tools: change_address, get_user_orders, get_shipping_status.\n"
         f"To get order details or shipping status, call the appropriate tool with the user's email.\n"
         f"Decide if you need to call a tool.\n"
