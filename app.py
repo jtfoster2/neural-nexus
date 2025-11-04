@@ -191,10 +191,26 @@ if not st.session_state.user_email:
             
             with st.container():
                 st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
-
-                login_email = st.text_input("Email", key="login_email", placeholder="Enter your email")
-                login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
+                with st.form("login_form"):
+                    login_email = st.text_input("Email", key="login_email", placeholder="Enter your email")
+                    login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
                 
+
+                    # Login btn
+                    if st.form_submit_button("Login", use_container_width=True):
+                        if not login_email or not login_password:
+                            st.error("Please enter both email and password.")
+                        else:
+                            success, message = auth.login(login_email.strip().lower(), login_password)
+                            if success:
+                                st.session_state.user_email = login_email.strip().lower()
+                                st.session_state.user_name = auth.get_user_display_name(login_email.strip().lower())
+                                st.session_state.chat_started = True
+                                st.success(f"Welcome back, {st.session_state.user_name}!")
+                                st.rerun()
+                            else:
+                                st.error(message)
+                                
                 # Forgot password button
                 col1, col2 = st.columns([3, 1])
                 with col1:
@@ -207,21 +223,6 @@ if not st.session_state.user_email:
                         st.rerun()
 
                     st.markdown("<br>", unsafe_allow_html=True)
-
-                # Login btn
-                if st.button("Login", use_container_width=True):
-                    if not login_email or not login_password:
-                        st.error("Please enter both email and password.")
-                    else:
-                        success, message = auth.login(login_email.strip().lower(), login_password)
-                        if success:
-                            st.session_state.user_email = login_email.strip().lower()
-                            st.session_state.user_name = auth.get_user_display_name(login_email.strip().lower())
-                            st.session_state.chat_started = True
-                            st.success(f"Welcome back, {st.session_state.user_name}!")
-                            st.rerun()
-                        else:
-                            st.error(message)
         
         else:
             # Reset Password Form
@@ -385,6 +386,10 @@ def render_chat_history_page():
     rows = db.list_conversations_for_user(email)  # uses email to filter
     if not rows:
         st.info("No past conversations found.")
+        st.markdown("---")
+        if st.button("⬅️ Back to chat", key="history_back_to_chat_empty"):
+            st.session_state.page = "chat"
+            st.rerun()
         return
 
     for row in rows:
@@ -407,7 +412,7 @@ def render_chat_history_page():
                     st.chat_message(role).write(msg["content"])
 
     st.markdown("---")
-    if st.button("⬅️ Back to chat"):
+    if st.button("⬅️ Back to chat", key="history_back_to_chat"):
         st.session_state.page = "chat"
         st.rerun()
         
@@ -427,12 +432,14 @@ with st.sidebar:
     st.markdown("---")
 
     
-    chat_clicked = st.button("💬 Chat History", key="chat_history", type="tertiary")
+    
 
     # settings button  ** disabled for guest users **
     user_email = st.session_state.get("user_email", "")
     is_guest = (not user_email) or user_email.strip() == ""
     # print(f"[DEBUG] user_email: '{user_email}', is_guest: {is_guest}")  #DEBUG
+    
+    chat_clicked = st.button("💬 Chat History", key="chat_history", type="tertiary", disabled=is_guest)
     settings_clicked = st.button("⚙️ Settings", key="settings", type="tertiary", disabled=is_guest)
     
     # only show logout if user_email exists
@@ -443,8 +450,10 @@ with st.sidebar:
     # button actions
     if chat_clicked:
         st.session_state.page = "history"
+        st.rerun()
     if settings_clicked:
         st.session_state.page = "settings"
+        st.rerun()
     if logout_clicked:
         preserve = {"db_initialized": st.session_state.get("db_initialized", False)}
         st.session_state.clear()
@@ -460,7 +469,7 @@ if st.session_state.get("page") == "settings" and st.session_state.get("user_ema
     # check if user is a guest
     if st.session_state.user_email.strip() == " ":
         st.info("You're currently using a guest session. Please log in or sign up to manage your account settings.")
-        if st.button("Back to Chat"):
+        if st.button("Back to Chat", key="page_back_to_chat_guest"):
             st.session_state.page = None
             st.rerun()
         st.stop()
