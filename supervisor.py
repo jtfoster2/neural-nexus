@@ -14,7 +14,7 @@ from agents.live_agent_router import live_agent_router
 from agents.memory_agent import memory_agent
 
 # --- Import generalist agent components ---
-from agents.general_agent import general_agent, model  #Fallback LLM
+from agents.general_agent import general_agent, model  # Fallback LLM
 
 
 class AgentState(TypedDict):
@@ -27,29 +27,30 @@ class AgentState(TypedDict):
     output: Optional[str]
     routing_msg: Optional[str]
 
-#Top-level router. Determines user intent and writes it to state['intent'].
+# Top-level router. Determines user intent and writes it to state['intent'].
+
+
 def supervisor(state: AgentState):
 
     text = state["input"]
     print(text)
 
-
-    #Finds intent using keyword matching and LLM fallback
+    # Finds intent using keyword matching and LLM fallback
     intent = (detect_intent(text) or "").strip().lower()
-
-
 
     if not intent:
         try:
             resp = model.invoke(
                 "Classify the user's intent as one of: "
-                "['check order','shipping status','billing','forgot password','change address',"
+                "['order event''check order','shipping status','billing','forgot password','change address',"
                 "'refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
             )
-            label = (getattr(resp, "content", None) or str(resp) or "").strip().lower()
+            label = (getattr(resp, "content", None)
+                     or str(resp) or "").strip().lower()
             known = {
+                "order": "order event",
                 "check order": "check order",
                 "shipping status": "shipping status",
                 "billing": "billing",
@@ -62,7 +63,7 @@ def supervisor(state: AgentState):
                 "live agent": "live agent",
                 "memory": "memory",
                 "chat history": "memory",
-                "other": "other", #general_agent
+                "other": "other",  # general_agent
             }
             intent = known.get(label, "other")
         except Exception:
@@ -75,7 +76,8 @@ def supervisor(state: AgentState):
     agent_name = state.get('intent')
     routing_msg = f"Routing to **{agent_name}** agent..."
     state["routing_msg"] = routing_msg
-    print(f"[DEBUG************] state['routing_msg']: {state['routing_msg']}") #debugging
+    # debugging
+    print(f"[DEBUG************] state['routing_msg']: {state['routing_msg']}")
     # ----------------
 
     return state
@@ -105,11 +107,11 @@ def route_decider(state: AgentState):
     return route
 
 
-
 graph.add_conditional_edges(
     "supervisor",
     route_decider,
     {
+        "order event": "order_agent",
         "check order": "order_agent",
         "shipping status": "shipping_agent",
         "billing": "billing_agent",
@@ -123,18 +125,18 @@ graph.add_conditional_edges(
         "live agent": "live_agent_router",
         "live agent": "live_agent_router",
         "memory": "memory_agent",
-        "other": "general_agent", # fallback to your general agent
+        "other": "general_agent",  # fallback to your general agent
     },
 )
 
 # Specialists Agents
 for terminal in [
-    "order_agent", "shipping_agent", "billing_agent", "account_agent", 
+    "order_agent", "shipping_agent", "billing_agent", "account_agent",
     "return_agent", "message_agent", "live_agent_router", "memory_agent"
 ]:
     graph.add_edge(terminal, END)
 
-# Generalist chain 
+# Generalist chain
 graph.add_edge("general_agent", END)
 
 memory = MemorySaver()
@@ -153,14 +155,16 @@ def ask_agent(query: str, thread_id: str = "default", email: str | None = None) 
         "output": None,
         "routing_msg": None,
     }
-    result = app.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    routing_msg = result.get("routing_msg") #extract routing message
+    result = app.invoke(
+        state, config={"configurable": {"thread_id": thread_id}})
+    routing_msg = result.get("routing_msg")  # extract routing message
     output = result.get("output") or ""
     if routing_msg:
         return f"{routing_msg}\n\n{output}"
     else:
         return output
-    
+
+
 def ask_agent_events(query: str, thread_id: str = "default", email: str | None = None):
     """
     Yields tuples of (kind, text) as the graph progresses:
@@ -185,8 +189,10 @@ def ask_agent_events(query: str, thread_id: str = "default", email: str | None =
         if s.get("output"):
             yield ("output", s["output"])
 
-#this is to detect keywords when users type-in the input
+
+# this is to detect keywords when users type-in the input
 INTENT_KEYWORDS = {
+    "order event": ["order", "purchase", "buy", "order event"],
     "check order": ["order", "orders", "check order", "my order", "track order"],
     "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
     "billing": ["billing", "payment", "charge", "invoice"],
@@ -199,6 +205,7 @@ INTENT_KEYWORDS = {
     "live agent": ["live agent", "human agent", "chat with agent"],
     "memory": ["history", "memory", "chat history"]
 }
+
 
 def detect_intent(user_input: Optional[str]):
     """Match user input against keywords to detect intent."""

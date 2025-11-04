@@ -16,8 +16,8 @@ if "user_email" not in st.session_state:
 if "user_name" not in st.session_state:
     st.session_state.user_name = None
 
-if "chat_started" not in st.session_state:  
-    st.session_state.chat_started = False   
+if "chat_started" not in st.session_state:
+    st.session_state.chat_started = False
 
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = str(uuid.uuid4())
@@ -25,22 +25,23 @@ if "conversation_id" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-#Sidebar
+# Sidebar
 with st.sidebar:
-    #use columns to center the image
+    # use columns to center the image
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.image("robot_icon.png", width=100)
 
-    
     # st.title("AI Customer Service")
     # st.write("How can we help you today?")
-    
-    #centered title and subtitle
-    st.markdown("<h3 style='text-align: center;'>AI Customer Service</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>How can we help you today?</p>", unsafe_allow_html=True)
 
-    #use column to center the startchat button
+    # centered title and subtitle
+    st.markdown("<h3 style='text-align: center;'>AI Customer Service</h3>",
+                unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>How can we help you today?</p>",
+                unsafe_allow_html=True)
+
+    # use column to center the startchat button
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("Start Chat"):
@@ -73,27 +74,28 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
-#Stop if chat not started         
+# Stop if chat not started
 if not st.session_state.chat_started:
     st.info("Click **Start Chat** in the sidebar to begin.")
     st.stop()
 
 # --- Conversation ID ---
 if st.session_state.user_email:
-    #st.caption(f"Session ID: `{st.session_state.conversation_id}`") #DEBUGGING
+    # st.caption(f"Session ID: `{st.session_state.conversation_id}`") #DEBUGGING
     st.caption(f"User: `{st.session_state.user_email}`")
 
-#Greeting text
+# Greeting text
 if not st.session_state.messages:
     st.session_state.messages.append({
         "role": "assistant",
         "content": "👋 Hi there! How can I help you today?"
     })
 
-#Load user chat history           
+# Load user chat history
 if st.session_state.user_email and not st.session_state.messages:
-    st.session_state.messages = db.list_conversations_for_user(st.session_state.user_email)
-    print(st.session_state.messages)  #DEBUGGING
+    st.session_state.messages = db.list_conversations_for_user(
+        st.session_state.user_email)
+    print(st.session_state.messages)  # DEBUGGING
 
 # --- Display chat history ---
 for msg in st.session_state.messages:
@@ -117,6 +119,8 @@ if not st.session_state.user_email:
         st.session_state.user_email = " "
         st.success(f"Welcome, {st.session_state.user_name}!")
         st.rerun()
+
+
 def send_message_to_agent(prompt: str):
 
     user = db.get_user(st.session_state.user_email)
@@ -126,14 +130,13 @@ def send_message_to_agent(prompt: str):
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
-
     routing_shown = False
     final_reply = None
 
     with st.spinner("Thinking…"):
-        
+
         start = time.time()
-        elapsed = time.time() - start # Enforce a minimum of 3s delay for realism
+        elapsed = time.time() - start  # Enforce a minimum of 3s delay for realism
         if elapsed < 3:
             time.sleep(3 - elapsed)
 
@@ -145,12 +148,14 @@ def send_message_to_agent(prompt: str):
             if kind == "routing" and not routing_shown:
                 # show routing as its own bubble and persist it
                 st.chat_message("assistant").write(f"{text}")
-                st.session_state.messages.append({"role": "assistant", "content": f"{text}"})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": f"{text}"})
                 routing_shown = True
             elif kind == "output":
                 # final answer bubble + persist
                 st.chat_message("assistant").write(text)
-                st.session_state.messages.append({"role": "assistant", "content": text})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": text})
                 final_reply = text
 
     db.add_conversation(
@@ -163,7 +168,7 @@ def send_message_to_agent(prompt: str):
 
     return final_reply
 
-    
+
 # --- Chat input ---
 if st.session_state.user_email:
     prompt = st.chat_input("Ask me anything about your order, billing, etc.")
@@ -175,7 +180,9 @@ if st.session_state.user_email:
 else:
     st.stop()
 
-def handle_option(option, from_chat=False): ####Modified to handle quick option buttons with streaming reply####
+
+# Modified to handle quick option buttons with streaming reply####
+def handle_option(option, from_chat=False):
     user_email = st.session_state.user_email
 
     routing_shown = False
@@ -185,18 +192,21 @@ def handle_option(option, from_chat=False): ####Modified to handle quick option 
         for kind, text in ask_agent_events(option, st.session_state.conversation_id, email=user_email):
             if kind == "routing" and not routing_shown:
                 if user_email and not from_chat:
-                    st.session_state.messages.append({"role": "user", "content": option})
+                    st.session_state.messages.append(
+                        {"role": "user", "content": option})
                 st.chat_message("assistant").write(f"{text}")
                 start = time.time()
                 elapsed = time.time() - start
                 # Enforce a minimum of 3s delay for realism
                 if elapsed < 3:
                     time.sleep(3 - elapsed)
-                st.session_state.messages.append({"role": "assistant", "content": f"{text}"})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": f"{text}"})
                 routing_shown = True
             elif kind == "output":
                 st.chat_message("assistant").write(text)
-                st.session_state.messages.append({"role": "assistant", "content": text})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": text})
                 final_reply = text
 
     db.add_conversation(
@@ -208,11 +218,12 @@ def handle_option(option, from_chat=False): ####Modified to handle quick option 
     return final_reply
 
 
-#Quick Options Menu
+# Quick Options Menu
 if st.session_state.user_email:
     st.markdown("---")
     st.markdown("#### Quick Options")
     col1, col2, col3, col4 = st.columns(4)
+
     def handle_option_button(option):
         handle_option(option)
     with col1:
