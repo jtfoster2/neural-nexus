@@ -153,24 +153,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Email prompt; Authentication (before sidebar and chat) ---
-
-# # --- Email prompt ---
-# if not st.session_state.user_email:
-#     st.info("Please enter your email to begin.")
-#     email = st.text_input("Email address", placeholder="you@example.com")
-#     if email:
-#         st.session_state.user_email = email.strip().lower()
-#         st.success(f"Welcome, {st.session_state.user_email}!")
-#         st.rerun()
-
-#     if st.button("Continue as Guest"):
-#         st.session_state.chat_started = True
-#         st.session_state.user_name = "Guest"
-#         st.session_state.user_email = " "
-#         st.success(f"Welcome, {st.session_state.user_name}!")
-#         st.rerun()
-######################
-
 if not st.session_state.user_email:
     
     # embed Capgemini image as base64 to center it
@@ -446,12 +428,13 @@ with st.sidebar:
 
     
     chat_clicked = st.button("💬 Chat History", key="chat_history", type="tertiary")
-    if chat_clicked:
-        st.session_state.page = "history"
-        st.rerun()
-    settings_clicked = st.button("⚙️ Settings", key="settings", type="tertiary")
-    
 
+    # settings button  ** disabled for guest users **
+    user_email = st.session_state.get("user_email", "")
+    is_guest = (not user_email) or user_email.strip() == ""
+    # print(f"[DEBUG] user_email: '{user_email}', is_guest: {is_guest}")  #DEBUG
+    settings_clicked = st.button("⚙️ Settings", key="settings", type="tertiary", disabled=is_guest)
+    
     # only show logout if user_email exists
     logout_clicked = None
     if st.session_state.get("user_email"):
@@ -468,6 +451,164 @@ with st.sidebar:
         if preserve.get("db_initialized"):
             st.session_state.db_initialized = True
         st.rerun()
+
+
+# --- Settings page ---
+if st.session_state.get("page") == "settings" and st.session_state.get("user_email"):
+    st.header("Account Settings")
+    
+    # check if user is a guest
+    if st.session_state.user_email.strip() == " ":
+        st.info("You're currently using a guest session. Please log in or sign up to manage your account settings.")
+        if st.button("Back to Chat"):
+            st.session_state.page = None
+            st.rerun()
+        st.stop()
+    
+    user_row = db.get_user(st.session_state.user_email)
+
+    def _row_get(row, key):
+        try:
+            if row is None:
+                return ""
+            if isinstance(row, dict):
+                return row.get(key) or ""
+            return row[key] if key in row.keys() else ""
+        except Exception:
+            return ""
+
+    profile_tab, security_tab = st.tabs(["Profile", "Security"])
+
+    with profile_tab:
+        # display email ** disabled **
+        st.text_input("Email", value=st.session_state.user_email, disabled=True, key="page_settings_email")
+
+        # Profile fields
+        first = st.text_input("First name", value=_row_get(user_row, "first_name"), key="page_settings_first")
+        last = st.text_input("Last name", value=_row_get(user_row, "last_name"), key="page_settings_last")
+        phone = st.text_input("Phone", value=_row_get(user_row, "phone"), key="page_settings_phone")
+
+        # address fields
+        st.markdown("### Address")
+        address_line = st.text_input("Address Line", value=_row_get(user_row, "address_line"), key="page_settings_address_line")
+        city = st.text_input("City", value=_row_get(user_row, "city"), key="page_settings_city")
+
+        col_state, col_zip = st.columns(2)
+        with col_state:
+            state = st.text_input("State", value=_row_get(user_row, "state"), key="page_settings_state")
+        with col_zip:
+            zip_code = st.text_input("Zip Code", value=_row_get(user_row, "zip_code"), key="page_settings_zip")
+
+        country = st.text_input("Country", value=_row_get(user_row, "country"), key="page_settings_country")
+
+        # a little breathing room before buttons
+        st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
+
+        # single Update button for profile and address (centered)
+        spacer_left, mid, spacer_right = st.columns([1, 2, 1])
+        with mid:
+            # add a small spacer column between the two buttons for nicer separation
+            btn_col1, spacer_mid, btn_col2 = st.columns([1, 0.2, 1])
+            with btn_col1:
+                update_clicked = st.button("Update", key="page_update_settings", use_container_width=True)
+            with btn_col2:
+                back_clicked = st.button("Back to Chat", key="page_back_to_chat", use_container_width=True)
+
+        # buttons spacing
+        st.markdown("<div style='height: 12px'></div>", unsafe_allow_html=True)
+
+        if update_clicked:
+            try:
+                db.set_user_first_name(st.session_state.user_email, first)
+                db.set_user_last_name(st.session_state.user_email, last)
+                db.set_user_phone(st.session_state.user_email, phone)
+                db.set_user_address_line(st.session_state.user_email, address_line)
+                db.set_user_city(st.session_state.user_email, city)
+                db.set_user_state(st.session_state.user_email, state)
+                db.set_user_country(st.session_state.user_email, country)
+                db.set_user_zip_code(st.session_state.user_email, zip_code)
+                st.success("Profile updated")
+                # keep user on the Settings page; just refresh display name in session
+                st.session_state.user_name = first or st.session_state.user_name
+            except Exception as e:
+                st.error(f"Error updating account: {e}")
+
+        if back_clicked:
+            st.session_state.page = None
+            st.rerun()
+
+    with security_tab:
+        # change Password Section
+        st.subheader("Change Password")
+        with st.form("change_password_form"):
+            current_pw = st.text_input("Current password", type="password")
+            new_pw = st.text_input("New password", type="password")
+            confirm_pw = st.text_input("Confirm new password", type="password")
+            pw_submit = st.form_submit_button("Update Password")
+
+        if pw_submit:
+            email = st.session_state.user_email
+            user = db.get_user(email)
+            # GUARD against guest or missing user
+            if (not user) or (not (user["password_hash"] or "")):
+                st.error("Password not set for this account.")
+            elif not new_pw:
+                st.error("Please enter a new password.")
+            elif new_pw != confirm_pw:
+                st.error("New passwords do not match.")
+            elif not current_pw:
+                st.error("Please enter your current password.")
+            else:
+                if not auth.verify_password(current_pw, user["password_hash"]):
+                    st.error("Current password is incorrect.")
+                else:
+                    ok, msg = auth.reset_password(email, new_pw)
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+
+        st.markdown("---")
+
+        # delete account section
+        st.subheader("Delete Account")
+        st.warning("⚠️ This action is irreversible. All your data will be permanently deleted.")
+
+        with st.form("delete_account_form"):
+            confirm_delete = st.checkbox("I understand that deleting my account is permanent")
+            delete_password = st.text_input("Enter your password to confirm", type="password")
+            delete_submit = st.form_submit_button("Delete My Account", type="primary")
+
+        if delete_submit:
+            email = st.session_state.user_email
+            user = db.get_user(email)
+
+            if not confirm_delete:
+                st.error("Please check the confirmation box to proceed.")
+            elif not delete_password:
+                st.error("Please enter your password to confirm deletion.")
+            elif email.strip() == " ":  # GUEST user
+                st.error("Guest accounts cannot be deleted.")
+            elif (not user) or (not (user["password_hash"] or "")):
+                st.error("Unable to verify account.")
+            elif not auth.verify_password(delete_password, user["password_hash"]):
+                st.error("Password is incorrect.")
+            else:
+                try:
+                    # delete user (CASCADE will remove orders, payments, conversations)
+                    db._exec("DELETE FROM users WHERE email = ?", [email])
+                    st.success("Account deleted successfully. You will be logged out.")
+                    time.sleep(2)
+                    # clear session and redirect to login
+                    preserve = {"db_initialized": st.session_state.get("db_initialized", False)}
+                    st.session_state.clear()
+                    if preserve.get("db_initialized"):
+                        st.session_state.db_initialized = True
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error deleting account: {e}")
+
+    st.stop()
 
 
 # --- Conversation ID ---
@@ -590,12 +731,13 @@ def handle_option(option, from_chat=False): ####Modified to handle quick option 
 if st.session_state.user_email:
     st.markdown("---")
     st.markdown("#### Quick Options")
+    
     col1, col2, col3, col4 = st.columns(4)
     def handle_option_button(option):
         handle_option(option)
     with col1:
-        if st.button("Forgot Password", use_container_width=True):
-            st.session_state.pending_prompt = "Forgot Password"
+        if st.button("Change Password", use_container_width=True):
+            st.session_state.pending_prompt = "Change Password"
             st.rerun()
     with col2:
         if st.button("Refund", use_container_width=True):
