@@ -120,8 +120,10 @@ class MessageAgent:
                 details=state.get("details"),
                 name=state.get("name"),
             )
-            state.setdefault("subject", subj)
-            state.setdefault("body", body)
+
+            state["subject"] = state.get("subject") or subj
+            state["body"] = state.get("body") or body
+
 
         # Validate required fields
         problems = self._validate(state)
