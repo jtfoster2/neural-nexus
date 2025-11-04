@@ -31,6 +31,12 @@ model = ChatGoogleGenerativeAI(
     #stream=True  # enable streaming
 )
 
+model_fast = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash-lite", #use gemini-2.5-lite for cheaper option
+    google_api_key=os.environ["GOOGLE_API_KEY"],
+    #stream=True  # enable streaming
+)
+
 
 SYSTEM_PROMPT = (
         f"You are a helpful customer support assistant for CapGemini with tools.\n"
@@ -69,4 +75,13 @@ def general_agent(state: AgentState) -> AgentState:
         state["output"] = f"LLM error: {e}"
     return state
 
+def summarize_conversation(conversation_id: int) -> str:
+    convo = db.get_conversation(conversation_id)
+    if not convo:
+        return "Conversation not found."
+    else:
+        resp = model_fast.invoke(
+            f"Summarize the following customer support conversation in a few words:\n\n{convo}"
+        )
+        return getattr(resp, "content", None) or str(resp) or "No summary available."
 

@@ -247,6 +247,13 @@ def set_conversation_ended(conversation_id: str): _exec("UPDATE ai_conversations
 def set_conversation_text(conversation_id: str, text: str): _exec("UPDATE ai_conversations SET conversation_text=? WHERE conversation_id=?", (text, conversation_id))
 
 def list_conversations_for_user(email: str): return _query("SELECT * FROM ai_conversations WHERE email=? ORDER BY started_at DESC", (email.lower(),))
+def get_conversation(conversation_id: int) -> Optional[str]:
+    rows = _query("SELECT conversation_text FROM ai_conversations WHERE conversation_id = ?", (conversation_id,))
+    if not rows:
+        return None
+    row = rows[0]
+    return row["conversation_text"] if "conversation_text" in row.keys() else None
+
 
 # ---------------------------------------------------------------
 # Migrations - Handles schema changes for existing databases (Added Address to users table)

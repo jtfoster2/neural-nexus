@@ -8,6 +8,7 @@ import auth
 import base64
 from pathlib import Path
 from datetime import datetime
+from agents.general_agent import summarize_conversation
 
 
 # --- Session setup ---
@@ -396,7 +397,7 @@ def render_chat_history_page():
         conv_id = row["conversation_id"]
         started_at = row.get("started_at") or ""
         # make a friendly header (timestamp may be ISO already)
-        header = f"Conversation {conv_id}"
+        header = summarize_conversation(conv_id) #maybe convert to AI summary later
         if started_at:
             header += f" — {started_at}"
 
@@ -632,7 +633,6 @@ if not st.session_state.messages:
 #Load user chat history           
 if st.session_state.user_email and not st.session_state.messages:
     st.session_state.messages = db.list_conversations_for_user(st.session_state.user_email)
-    print(st.session_state.messages)  #DEBUGGING
 
 # --- Display chat history ---
 for msg in st.session_state.messages:
