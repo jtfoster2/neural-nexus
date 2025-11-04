@@ -48,7 +48,6 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip().lower())
 
 def compile_policy(policy_text: Optional[str], policy_format: str = "plain") -> Dict[str, Any]:
-    print(f"[POLICY]:  {policy_text}")
     if not policy_text:
         return dict(DEFAULTS)
     if policy_format == "json":
