@@ -620,7 +620,7 @@ if st.session_state.get("page") == "settings" and st.session_state.get("user_ema
 # --- Conversation ID ---
 if st.session_state.user_email:
     #st.caption(f"Session ID: `{st.session_state.conversation_id}`") #DEBUGGING
-    st.caption(f"User: `{st.session_state.user_email}`")
+    st.write(f"User: `{st.session_state.user_email}`")
 
 #Greeting text
 if not st.session_state.messages:
