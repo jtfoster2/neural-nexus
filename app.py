@@ -7,6 +7,8 @@ from supervisor import ask_agent_events
 import auth
 import base64
 from pathlib import Path
+from datetime import datetime
+
 
 # --- Session setup ---
 if "db_initialized" not in st.session_state:
@@ -27,6 +29,10 @@ if "conversation_id" not in st.session_state:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+if "page" not in st.session_state:
+    st.session_state.page = "chat"
+
 
 # CSS for signup/login
 st.markdown("""
@@ -343,6 +349,90 @@ if not st.session_state.user_email:
     # don't show anything else until authenticated
     st.stop()
 
+# ------- Chat History Functions -------
+
+def _parse_conversation_text(raw: str):
+    """
+    Accepts either the JSON we save (list[{"role","content"}]) or a plain text seed like:
+    "User: Hi\nAssistant: Hello!"
+    Returns a list of dicts [{role, content}, ...]
+    """
+    if not raw:
+        return []
+    # Try JSON first
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list) and all(isinstance(x, dict) and "content" in x for x in data):
+            # Ensure roles are sane
+            out = []
+            for x in data:
+                role = (x.get("role") or "assistant").lower()
+                if role not in {"user", "assistant"}:
+                    role = "assistant"
+                out.append({"role": role, "content": x.get("content", "")})
+            return out
+    except Exception:
+        pass
+
+    # Fallback: plain text "User:" / "Assistant:" format
+    out = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.lower().startswith("user:"):
+            out.append({"role": "user", "content": line[5:].strip()})
+        elif line.lower().startswith("assistant:"):
+            out.append({"role": "assistant", "content": line[10:].strip()})
+        else:
+            # Append to last message if possible
+            if out:
+                out[-1]["content"] += ("\n" + line)
+            else:
+                out.append({"role": "assistant", "content": line})
+    return out
+
+def render_chat_history_page():
+    st.title("💬 Chat History")
+
+    email = st.session_state.get("user_email")
+    if not email:
+        st.info("Log in to view your history.")
+        return
+
+    rows = db.list_conversations_for_user(email)  # uses email to filter
+    if not rows:
+        st.info("No past conversations found.")
+        return
+
+    for row in rows:
+        row = dict(row)
+        conv_id = row["conversation_id"]
+        started_at = row.get("started_at") or ""
+        # make a friendly header (timestamp may be ISO already)
+        header = f"Conversation {conv_id}"
+        if started_at:
+            header += f" — {started_at}"
+
+        with st.expander(header, expanded=False):
+            messages = _parse_conversation_text(row.get("conversation_text") or "")
+            if not messages:
+                st.write("_(empty conversation)_")
+            else:
+                # render as simple bubbles (read-only)
+                for msg in messages:
+                    role = msg["role"] if msg["role"] in {"user", "assistant"} else "assistant"
+                    st.chat_message(role).write(msg["content"])
+
+    st.markdown("---")
+    if st.button("⬅️ Back to chat"):
+        st.session_state.page = "chat"
+        st.rerun()
+        
+if st.session_state.get("page") == "history":
+    render_chat_history_page()
+    st.stop()  # prevent the live chat UI from rendering underneath
+
 #Sidebar
 with st.sidebar:
     # center image
@@ -356,7 +446,11 @@ with st.sidebar:
 
     
     chat_clicked = st.button("💬 Chat History", key="chat_history", type="tertiary")
+    if chat_clicked:
+        st.session_state.page = "history"
+        st.rerun()
     settings_clicked = st.button("⚙️ Settings", key="settings", type="tertiary")
+    
 
     # only show logout if user_email exists
     logout_clicked = None
