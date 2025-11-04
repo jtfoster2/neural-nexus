@@ -209,9 +209,25 @@ if not st.session_state.user_email:
             
             with st.container():
                 st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
+                with st.form("login_form"):
+                    login_email = st.text_input("Email", key="login_email", placeholder="Enter your email")
+                    login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
 
-                login_email = st.text_input("Email", key="login_email", placeholder="Enter your email")
-                login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
+                    # Login btn
+                    if st.form_submit_button("Login", use_container_width=True):
+                        if not login_email or not login_password:
+                            st.error("Please enter both email and password.")
+                        else:
+                            success, message = auth.login(login_email.strip().lower(), login_password)
+                            if success:
+                                st.session_state.user_email = login_email.strip().lower()
+                                st.session_state.user_name = auth.get_user_display_name(login_email.strip().lower())
+                                st.session_state.chat_started = True
+                                st.success(f"Welcome back, {st.session_state.user_name}!")
+                                st.rerun()
+                            else:
+                                st.error(message)
+        
                 
                 # Forgot password button
                 col1, col2 = st.columns([3, 1])
@@ -226,21 +242,7 @@ if not st.session_state.user_email:
 
                     st.markdown("<br>", unsafe_allow_html=True)
 
-                # Login btn
-                if st.button("Login", use_container_width=True):
-                    if not login_email or not login_password:
-                        st.error("Please enter both email and password.")
-                    else:
-                        success, message = auth.login(login_email.strip().lower(), login_password)
-                        if success:
-                            st.session_state.user_email = login_email.strip().lower()
-                            st.session_state.user_name = auth.get_user_display_name(login_email.strip().lower())
-                            st.session_state.chat_started = True
-                            st.success(f"Welcome back, {st.session_state.user_name}!")
-                            st.rerun()
-                        else:
-                            st.error(message)
-        
+
         else:
             # Reset Password Form
             st.markdown("""
