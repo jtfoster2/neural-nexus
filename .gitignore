@@ -1,0 +1,10 @@
+package-lock.json
+__pycache__/
+*.pyc
+*.env
+venv/
+include/
+*.db
+\n# OS / editor artifacts
+.DS_Store
+SELECT
