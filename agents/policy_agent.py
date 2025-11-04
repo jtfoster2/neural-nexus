@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import re, json
 
 # ---------------- Defaults ----------------
-DEFAULTS = {
+DEFAULTS = { 
     "return_window_days": 30,
     "rma_ship_back_days": 7,
     "warranty_years": 1,
@@ -48,6 +48,7 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip().lower())
 
 def compile_policy(policy_text: Optional[str], policy_format: str = "plain") -> Dict[str, Any]:
+    print(f"[POLICY]:  {policy_text}")
     if not policy_text:
         return dict(DEFAULTS)
     if policy_format == "json":
@@ -78,7 +79,80 @@ def compile_policy(policy_text: Optional[str], policy_format: str = "plain") -> 
         cfg["international_customer_pays"] = True
     return cfg
 
-# ---------------- Date helpers ----------------
+def _fmt_days(n: int, unit="day") -> str:
+    n = int(n)
+    return f"{n} {unit}{'' if n == 1 else 's'}"
+
+def summarize_policy(cfg: Dict[str, Any]) -> str:
+    nonret = ", ".join(sorted(cfg["non_returnable_categories"])) or "None"
+    window = _fmt_days(cfg["return_window_days"])
+    ship_back = _fmt_days(cfg["rma_ship_back_days"])
+    warranty = f"{int(cfg['warranty_years'])}-year limited warranty"
+    restock = f"up to {int(round(float(cfg['max_restocking_fee_pct']) * 100))}%"
+    prepaid = "defective or incorrect items" if {"defective","incorrect"} <= {x.lower() for x in cfg.get("prepaid_label_on", set())} else ", ".join(cfg.get("prepaid_label_on", [])) or "—"
+    intl = "Customer pays shipping + duties/taxes" if cfg.get("international_customer_pays", True) else "We cover international return shipping"
+    return (
+        "• Return window: " + window + " from delivery\n"
+        "• RMA ship-back deadline: " + ship_back + " after approval\n"
+        "• Warranty: " + warranty + "\n"
+        "• Non-returnable items: " + nonret + "\n"
+        "• Restocking fee (non-defective): " + restock + "\n"
+        "• Prepaid label provided for: " + prepaid + "\n"
+        "• International returns: " + intl
+    )
+
+def answer_policy_query(text: str, cfg: Dict[str, Any]) -> str | None:
+    t = _clean(text)
+    # FAQs by intent
+    if any(k in t for k in ["return window", "how long to return", "days to return", "return period", "time to return"]):
+        return f"Return window: {_fmt_days(cfg['return_window_days'])} from the delivery date."
+    if any(k in t for k in ["rma ship", "ship back", "return label deadline", "drop off deadline"]):
+        return f"RMA ship-back deadline: {_fmt_days(cfg['rma_ship_back_days'])} after RMA approval."
+    if any(k in t for k in ["warranty", "warrantee", "manufacturer defect"]):
+        return f"Warranty: {int(cfg['warranty_years'])}-year limited warranty against manufacturer defects."
+    if any(k in t for k in ["non returnable", "non-returnable", "cannot return", "no returns on"]):
+        items = ", ".join(sorted(cfg["non_returnable_categories"])) or "None"
+        return f"Non-returnable items: {items}."
+    if any(k in t for k in ["restocking", "restock"]):
+        pct = int(round(float(cfg["max_restocking_fee_pct"]) * 100))
+        return f"Restocking fee: up to {pct}% for non-defective returns."
+    if any(k in t for k in ["who pays shipping", "return shipping cost", "prepaid label", "cover shipping"]):
+        prepaid = cfg.get("prepaid_label_on", set())
+        if {"defective","incorrect"} <= {x.lower() for x in prepaid}:
+            return "We cover return shipping for defective or incorrect items; customer pays for change-of-mind returns."
+        return "Return shipping coverage depends on the case per policy."
+    if any(k in t for k in ["international returns", "international shipping"]):
+        return ("International customers are responsible for return shipping and any duties/taxes."
+                if cfg.get("international_customer_pays", True)
+                else "We cover international return shipping per policy.")
+    if any(k in t for k in ["show policy", "policy summary", "what is the policy", "return policy", "policy overview"]):
+        return summarize_policy(cfg)
+    # Catch-all: if they say "what is X policy" without a keyword we recognize
+    if "policy" in t and any(k in t for k in ["what", "explain", "tell me", "show"]):
+        return summarize_policy(cfg)
+    return None
+
+
+# ---------------- Helpers ----------------
+
+def _has_order_context(state: AgentState) -> bool:
+    # Returns true if there are enough fields to attempt a return/warranty eligibility check
+    return any([
+        state.get("delivery_date"),
+        state.get("purchase_date"),
+        state.get("category"),
+        state.get("condition"),
+        state.get("original_packaging") is not None,
+        state.get("proof_of_purchase") is not None,
+        state.get("is_defective") is not None,
+        state.get("is_incorrect_item") is not None,
+        state.get("customer_reason"),
+        state.get("country"),
+        state.get("order_id"),
+        state.get("email"),
+        state.get("sku"),
+    ])
+
 
 def _to_date(s: Optional[str]) -> Optional[datetime]:
     if not s: return None
@@ -164,9 +238,21 @@ def warranty_eligibility(*, purchase_date: Optional[str], delivery_date: Optiona
     eligible = bool(within and proof_of_purchase and is_defective)
     return {"eligible": eligible, "days_since_delivery_or_purchase": days_since, "reasons": reasons}
 
-# ---------------- Minimal agent + tools ----------------
+# ---------------- Agent Tools ----------------
 Tool = Callable[..., Any]
 TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "policy:get_config": {
+        "fn": lambda **kw: compile_policy(
+            kw.get("policy_text") or kw.get("return_policy"),
+            kw.get("policy_format", "plain"),
+        ),
+        "schema": {
+            "policy_text": "str (optional)",
+            "return_policy": "str (optional)",
+            "policy_format": "str (optional: 'plain'|'json')",
+        },
+        "desc": "Return the parsed policy configuration so other agents can use it.",
+    },
     "policy:return_eligibility": {
         "fn": lambda **kw: return_eligibility(**kw),
         "schema": {},
@@ -182,12 +268,45 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
 class PolicyAgent:
     def run(self, state: AgentState) -> AgentState:
         state.setdefault("tool_calls", []); state.setdefault("tool_results", [])
-        pol_text = state.get("policy_text") or state.get("return_policy")
-        cfg = compile_policy(pol_text, state.get("policy_format", "plain"))
 
-        # Decide which check to run
-        text = _clean(state.get("input", ""))
-        do_warranty = any(w in text for w in ["warranty", "defect", "manufacturer"]) and not any(w in text for w in ["return", "refund", "exchange", "rma"]) 
+        # Compile policy text / config
+        file_path = "return_policy.txt"
+        
+
+        with open(file_path, 'r') as file:
+            content = file.read()
+            
+            cfg = compile_policy(content, state.get("policy_format", "plain"))
+
+            text = _clean(state.get("input", ""))
+
+        #If there's no order context, treat it as a question, not a return/warranty check
+        if not _has_order_context(state):
+            # Tries to answer directly first:
+            qa = answer_policy_query(text, cfg)
+            if qa:
+                state["tool_calls"].append("policy:get_config({...})")
+                state["tool_results"].append(repr(cfg)[:400])
+                state["output"] = qa
+                state["confidence"] = 0.9
+                return state
+            # Fallback: policy summary if we can't answer specifically
+            state["tool_calls"].append("policy:get_config({...})")
+            state["tool_results"].append(repr(cfg)[:400])
+            state["output"] = (
+                summarize_policy(cfg)
+                + "\n\n_To evaluate a specific order’s eligibility, include:_ "
+                  "`delivery_date`, `condition`, `original_packaging`, "
+                  "`proof_of_purchase`, `category`, `is_defective`/`is_incorrect_item`, and `country`."
+            )
+            state["confidence"] = 0.85
+            return state
+
+        #If we have order context, proceed to return/warranty eligibility checks
+        do_warranty = (
+            any(w in text for w in ["warranty", "defect", "manufacturer"])
+            and not any(w in text for w in ["return", "refund", "exchange", "rma"])
+        )
 
         if do_warranty:
             args = {
@@ -237,12 +356,12 @@ def _fmt_return(res: Dict[str, Any]) -> str:
         )
     reasons = res.get("reasons") or ["Not eligible per policy."]
     notes = res.get("notes") or []
-    return "❌ Return not eligible:\n- " + "\n- ".join(reasons + notes)
+    return "Return not eligible:\n- " + "\n- ".join(reasons + notes)
 
 def _fmt_warranty(res: Dict[str, Any]) -> str:
     if res.get("eligible"):
-        return "✅ Warranty claim eligible. Provide proof of purchase and start a claim."
-    return "❌ Warranty not eligible:\n- " + "\n- ".join(res.get("reasons") or [])
+        return "Warranty claim is eligible. Provide proof of purchase and start a claim."
+    return "Warranty not eligible:\n- " + "\n- ".join(res.get("reasons") or [])
 
 # ---------------- Public entrypoint ----------------
 
