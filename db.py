@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS users (
     first_name          TEXT,
     last_name           TEXT,
     phone               TEXT,
+    address_line        TEXT,
+    city                TEXT,
+    state               TEXT,
+    country             TEXT,
+    zip_code            TEXT,
     created_at          TEXT DEFAULT (datetime('now')),
     is_active           INTEGER DEFAULT 1
 );
@@ -94,6 +99,7 @@ def init_db() -> None:
     with closing(get_connection()) as conn:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
+        migrate_add_address_columns()  # call a method to add address columns if they don't exist
         ensure_example_data()
     print(f"Database initialized at {DB_PATH}")
 
@@ -163,6 +169,11 @@ def set_user_password_hash(email: str, password_hash: str): _exec("UPDATE users 
 def set_user_first_name(email: str, first_name: str): _exec("UPDATE users SET first_name=? WHERE email=?", (first_name, email.lower()))
 def set_user_last_name(email: str, last_name: str): _exec("UPDATE users SET last_name=? WHERE email=?", (last_name, email.lower()))
 def set_user_phone(email: str, phone: str): _exec("UPDATE users SET phone=? WHERE email=?", (phone, email.lower()))
+def set_user_address_line(email: str, address_line: str): _exec("UPDATE users SET address_line=? WHERE email=?", (address_line, email.lower()))
+def set_user_city(email: str, city: str): _exec("UPDATE users SET city=? WHERE email=?", (city, email.lower()))
+def set_user_state(email: str, state: str): _exec("UPDATE users SET state=? WHERE email=?", (state, email.lower()))
+def set_user_country(email: str, country: str): _exec("UPDATE users SET country=? WHERE email=?", (country, email.lower()))
+def set_user_zip_code(email: str, zip_code: str): _exec("UPDATE users SET zip_code=? WHERE email=?", (zip_code, email.lower()))
 def set_user_is_active(email: str, is_active: int): _exec("UPDATE users SET is_active=? WHERE email=?", (int(is_active), email.lower()))
 
 # ---------------------------------------------------------------
@@ -236,6 +247,28 @@ def set_conversation_ended(conversation_id: str): _exec("UPDATE ai_conversations
 def set_conversation_text(conversation_id: str, text: str): _exec("UPDATE ai_conversations SET conversation_text=? WHERE conversation_id=?", (text, conversation_id))
 
 def list_conversations_for_user(email: str): return _query("SELECT * FROM ai_conversations WHERE email=? ORDER BY started_at DESC", (email.lower(),))
+
+# ---------------------------------------------------------------
+# Migrations - Handles schema changes for existing databases (Added Address to users table)
+# ---------------------------------------------------------------
+def migrate_add_address_columns():
+    """Add address columns to users table if they don't exist."""
+    with closing(get_connection()) as conn:
+        # Check if address_line column exists
+        cur = conn.execute("PRAGMA table_info(users)")
+        columns = [row[1] for row in cur.fetchall()]
+        
+        if 'address_line' not in columns:
+            print("Adding address columns to users table...")
+            conn.execute("ALTER TABLE users ADD COLUMN address_line TEXT")
+            conn.execute("ALTER TABLE users ADD COLUMN city TEXT")
+            conn.execute("ALTER TABLE users ADD COLUMN state TEXT")
+            conn.execute("ALTER TABLE users ADD COLUMN country TEXT")
+            conn.execute("ALTER TABLE users ADD COLUMN zip_code TEXT")
+            conn.commit()
+            print("Address columns added successfully.")
+        else:
+            print("Address columns already exist.")
 
 # ---------------------------------------------------------------
 # Entrypoint

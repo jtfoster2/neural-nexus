@@ -51,7 +51,7 @@ def supervisor(state: AgentState):
         try:
             resp = model.invoke(
                 "Classify the user's intent as one of: "
-                "['check order','shipping status','billing','forgot password','change address',"
+                "['check order','shipping status','billing','change password','change address',"
                 "'refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
@@ -61,7 +61,7 @@ def supervisor(state: AgentState):
                 "check order": "check order",
                 "shipping status": "shipping status",
                 "billing": "billing",
-                "forgot password": "forgot password",
+                "change password": "change password", #changed to change password
                 "change address": "change address",
                 "refund": "refund",
                 "live agent": "live agent",
@@ -125,8 +125,9 @@ graph.add_conditional_edges(
         "check order": "order_agent",
         "shipping status": "shipping_agent",
         "billing": "billing_agent",
-        "forgot password": "account_agent",
+        "account": "account_agent",
         "change address": "account_agent",
+        "change password": "account_agent",
         "refund": "return_agent",
         "return": "return_agent",
         "message": "message_agent",
@@ -179,7 +180,7 @@ INTENT_KEYWORDS = {
     "billing": ["billing", "payment", "charge", "invoice"],
     "change address": ["change address", "update address", "new address"],
     "change email": ["change email", "update email", "new email"],
-    "forgot password": ["forgot password", "reset password", "lost password", "password"],
+    "change password": ["change password", "reset password", "update password", "forgot password", "forgot my password", "lost password"],
     "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
     "refund": ["refund", "return", "money back"],
     "message agent": ["message agent", "notify user", "email user", "send confirmation", "send me an email"],
