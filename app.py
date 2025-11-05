@@ -375,50 +375,55 @@ def _parse_conversation_text(raw: str):
                 out.append({"role": "assistant", "content": line})
     return out
 
-def render_chat_history_page():
+        
+if st.session_state.get("page") == "history":
+    ph = st.empty()
+
+    #Does ALL loading/computation off-screen inside spinner (writes nothing until done)
+    with ph.container():
+        with st.spinner("Loading chat history..."):
+            email = st.session_state.get("user_email")
+            rows = db.list_conversations_for_user(email) if email else []
+            prepared = []  # (header, started_at, messages)
+
+            for row in rows or []:
+                r = dict(row)
+                conv_id = r["conversation_id"]
+                started_at = r.get("started_at") or ""
+                header = summarize_conversation(conv_id)  # fast model; cached if you like
+                messages = _parse_conversation_text(r.get("conversation_text") or "")
+                prepared.append((header, started_at, messages))
+
+    
+    ph.empty()
     st.title("💬 Chat History")
 
-    email = st.session_state.get("user_email")
     if not email:
         st.info("Log in to view your history.")
-        return
-
-    rows = db.list_conversations_for_user(email)  # uses email to filter
-    if not rows:
+    elif not prepared:
         st.info("No past conversations found.")
         st.markdown("---")
         if st.button("⬅️ Back to chat", key="history_back_to_chat_empty"):
             st.session_state.page = "chat"
             st.rerun()
-        return
+    else:
+        for header, started_at, messages in prepared:
+            title = header + (f" — {started_at}" if started_at else "")
+            with st.expander(title, expanded=False):
+                if not messages:
+                    st.write("_(empty conversation)_")
+                else:
+                    for msg in messages:
+                        role = msg.get("role") if msg.get("role") in {"user","assistant"} else "assistant"
+                        st.chat_message(role).write(msg.get("content",""))
 
-    for row in rows:
-        row = dict(row)
-        conv_id = row["conversation_id"]
-        started_at = row.get("started_at") or ""
-        # make a friendly header (timestamp may be ISO already)
-        header = summarize_conversation(conv_id) #maybe convert to AI summary later
-        if started_at:
-            header += f" — {started_at}"
+        st.markdown("---")
+        if st.button("⬅️ Back to chat", key="history_back_to_chat"):
+            st.session_state.page = "chat"
+            st.rerun()
 
-        with st.expander(header, expanded=False):
-            messages = _parse_conversation_text(row.get("conversation_text") or "")
-            if not messages:
-                st.write("_(empty conversation)_")
-            else:
-                # render as simple bubbles (read-only)
-                for msg in messages:
-                    role = msg["role"] if msg["role"] in {"user", "assistant"} else "assistant"
-                    st.chat_message(role).write(msg["content"])
+    st.stop()
 
-    st.markdown("---")
-    if st.button("⬅️ Back to chat", key="history_back_to_chat"):
-        st.session_state.page = "chat"
-        st.rerun()
-        
-if st.session_state.get("page") == "history":
-    render_chat_history_page()
-    st.stop()  # prevent the live chat UI from rendering underneath
 
 #Sidebar
 with st.sidebar:
@@ -437,7 +442,7 @@ with st.sidebar:
     user_email = st.session_state.get("user_email", "")
     is_guest = (not user_email) or user_email.strip() == ""
     # print(f"[DEBUG] user_email: '{user_email}', is_guest: {is_guest}")  #DEBUG
-    chat_clicked = st.button("💬 Chat History", key="chat_history", type="tertiary", disabled=is_guest)
+    history_clicked = st.button("💬 Chat History", key="chat_history", type="tertiary", disabled=is_guest)
     settings_clicked = st.button("⚙️ Settings", key="settings", type="tertiary", disabled=is_guest)
     
     # only show logout if user_email exists
@@ -446,7 +451,7 @@ with st.sidebar:
         logout_clicked = st.button("⏻ Log Out", key="logout", type="tertiary")
 
     # button actions
-    if chat_clicked:
+    if history_clicked:
         st.session_state.page = "history"
         st.rerun()
     if settings_clicked:

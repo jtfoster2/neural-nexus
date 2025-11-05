@@ -31,9 +31,11 @@ model = ChatGoogleGenerativeAI(
     #stream=True  # enable streaming
 )
 
-model_fast = ChatGoogleGenerativeAI(
+model_fast = ChatGoogleGenerativeAI( #currenly used for summarization
     model="gemini-2.5-flash-lite", #use gemini-2.5-lite for cheaper option
     google_api_key=os.environ["GOOGLE_API_KEY"],
+    temperature=0.1,             #for speed
+    max_output_tokens=64,        # small cap to increase speed
     #stream=True  # enable streaming
 )
 
@@ -81,7 +83,8 @@ def summarize_conversation(conversation_id: int) -> str:
         return "Conversation not found."
     else:
         resp = model_fast.invoke(
-            f"Summarize the following customer support conversation in a few words:\n\n{convo}"
+            f"Summarize this conversation in <= 8 words: "
+            f"Use only plain text, speed is the goal. \n\n{convo}"
         )
         return getattr(resp, "content", None) or str(resp) or "No summary available."
 
