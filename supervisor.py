@@ -29,13 +29,9 @@ class AgentState(TypedDict):
     output: Optional[str]
     routing_msg: Optional[str]
 
-<<<<<<< HEAD
-# Top-level router. Determines user intent and writes it to state['intent'].
+# Top-level router. Determines user intent and writes it to state['intent']
 
 
-=======
-#Top-level router. Determines user intent and writes it to state['intent']
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
 def supervisor(state: AgentState):
 
     text = state["input"]
@@ -44,26 +40,16 @@ def supervisor(state: AgentState):
     # Finds intent using keyword matching and LLM fallback
     intent = (detect_intent(text) or "").strip().lower()
 
-<<<<<<< HEAD
-=======
-    if (intent == "policy"): #inject policy text into state for policy agent
-        txt = os.getenv("return_policy.txt") 
+    if (intent == "policy"):  # inject policy text into state for policy agent
+        txt = os.getenv("return_policy.txt")
         state["return_policy"] = txt
         print("[SUPERVISOR] Injected return_policy into state for policy agent.")
 
-
-
-
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
     if not intent:
         try:
             resp = model.invoke(
                 "Classify the user's intent as one of: "
-<<<<<<< HEAD
-                "['order event''check order','shipping status','billing','forgot password','change address',"
-=======
-                "['check order','shipping status','billing','change password','change address',"
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
+                "['order_event','check order','shipping status','billing','change password','change address',"
                 "'refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
@@ -71,11 +57,10 @@ def supervisor(state: AgentState):
             label = (getattr(resp, "content", None)
                      or str(resp) or "").strip().lower()
             known = {
-                "order": "order event",
                 "check order": "check order",
                 "shipping status": "shipping status",
                 "billing": "billing",
-                "change password": "change password", #changed to change password
+                "change password": "change password",  # changed to change password
                 "change address": "change address",
                 "refund": "refund",
                 "live agent": "live agent",
@@ -84,14 +69,10 @@ def supervisor(state: AgentState):
                 "live agent": "live agent",
                 "memory": "memory",
                 "chat history": "memory",
-<<<<<<< HEAD
-                "other": "other",  # general_agent
-=======
                 "policy": "policy",                 # ← add
                 "return policy": "policy",          # ← add
-                "warranty": "policy",  
-                "other": "other", #general_agent
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
+                "warranty": "policy",
+                "other": "other",  # general_agent
             }
             intent = known.get(label, "other")
         except Exception:
@@ -140,7 +121,7 @@ graph.add_conditional_edges(
     "supervisor",
     route_decider,
     {
-        "order event": "order_agent",
+        "order_event": "order_agent",
         "check order": "order_agent",
         "shipping status": "shipping_agent",
         "billing": "billing_agent",
@@ -153,7 +134,7 @@ graph.add_conditional_edges(
         "message agent": "message_agent",
         "email agent": "message_agent",
         "live agent": "live_agent_router",
-        "policy": "policy_agent", 
+        "policy": "policy_agent",
         "memory": "memory_agent",
         "other": "general_agent",  # fallback to your general agent
     },
@@ -161,13 +142,8 @@ graph.add_conditional_edges(
 
 # Specialists Agents
 for terminal in [
-<<<<<<< HEAD
     "order_agent", "shipping_agent", "billing_agent", "account_agent",
-    "return_agent", "message_agent", "live_agent_router", "memory_agent"
-=======
-    "order_agent", "shipping_agent", "billing_agent", "account_agent", 
     "return_agent", "message_agent", "live_agent_router", "memory_agent", "policy_agent"
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
 ]:
     graph.add_edge(terminal, END)
 
@@ -176,34 +152,8 @@ graph.add_edge("general_agent", END)
 
 memory = MemorySaver()
 app = graph.compile(checkpointer=memory)
-<<<<<<< HEAD
 
 
-def ask_agent(query: str, thread_id: str = "default", email: str | None = None) -> str:
-
-    state: AgentState = {
-        "input": query,
-        "email": email,
-        "intent": None,
-        "reasoning": None,
-        "tool_calls": [],
-        "tool_results": [],
-        "output": None,
-        "routing_msg": None,
-    }
-    result = app.invoke(
-        state, config={"configurable": {"thread_id": thread_id}})
-    routing_msg = result.get("routing_msg")  # extract routing message
-    output = result.get("output") or ""
-    if routing_msg:
-        return f"{routing_msg}\n\n{output}"
-    else:
-        return output
-
-
-=======
-    
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
 def ask_agent_events(query: str, thread_id: str = "default", email: str | None = None):
 
     state: AgentState = {
@@ -240,7 +190,7 @@ INTENT_KEYWORDS = {
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
     "memory": ["history", "memory", "chat history"],
-    
+
 }
 
 
