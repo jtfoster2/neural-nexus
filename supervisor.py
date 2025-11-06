@@ -69,8 +69,8 @@ def supervisor(state: AgentState):
                 "live agent": "live agent",
                 "memory": "memory",
                 "chat history": "memory",
-                "policy": "policy",                 # ← add
-                "return policy": "policy",          # ← add
+                "policy": "policy",
+                "return policy": "policy",
                 "warranty": "policy",
                 "other": "other",  # general_agent
             }
@@ -136,7 +136,7 @@ graph.add_conditional_edges(
         "live agent": "live_agent_router",
         "policy": "policy_agent",
         "memory": "memory_agent",
-        "other": "general_agent",  # fallback to your general agent
+        "other": "general_agent",  # fallback to general agent
     },
 )
 
