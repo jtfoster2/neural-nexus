@@ -193,18 +193,18 @@ if not st.session_state.user_email:
             with st.container():
                 st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
                 with st.form("login_form"):
-                    login_email = st.text_input("Email", key="login_email", placeholder="Enter your email")
+                    login_email = st.text_input("Email or Phone Number", key="login_email", placeholder="Enter your email or phone number")
                     login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
 
                     # Login btn
                     if st.form_submit_button("Login", use_container_width=True):
                         if not login_email or not login_password:
-                            st.error("Please enter both email and password.")
+                            st.error("Please enter both email/phone and password.")
                         else:
-                            success, message = auth.login(login_email.strip().lower(), login_password)
+                            success, message, user_email = auth.login(login_email.strip(), login_password)
                             if success:
-                                st.session_state.user_email = login_email.strip().lower()
-                                st.session_state.user_name = auth.get_user_display_name(login_email.strip().lower())
+                                st.session_state.user_email = user_email
+                                st.session_state.user_name = auth.get_user_display_name(user_email)
                                 st.session_state.chat_started = True
                                 st.success(f"Welcome back, {st.session_state.user_name}!")
                                 st.rerun()
@@ -287,6 +287,7 @@ if not st.session_state.user_email:
             su_last = st.text_input("Last name", key="su_last", placeholder="Enter your last name")
             
         su_email = st.text_input("Email", key="su_email", placeholder="Enter your email address")
+        su_phone = st.text_input("Phone (optional)", key="su_phone", placeholder="e.g., +15555550123")
         
         # Password fields
         col3, col4 = st.columns(2)
@@ -302,7 +303,13 @@ if not st.session_state.user_email:
             elif su_password != su_confirm:
                 st.error("Passwords do not match.")
             else:
-                success, message = auth.signup(su_email.strip().lower(), su_password, su_first or None, su_last or None)
+                success, message = auth.signup(
+                    su_email.strip().lower(),
+                    su_password,
+                    su_first or None,
+                    su_last or None,
+                    (su_phone.strip() if su_phone and su_phone.strip() else None)
+                )
                 if success:
                     st.session_state.user_email = su_email.strip().lower()
                     st.session_state.user_name = auth.get_user_display_name(su_email.strip().lower())

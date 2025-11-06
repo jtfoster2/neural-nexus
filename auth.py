@@ -42,7 +42,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         print(f"Password verification error: {str(e)}")
         return False
 
-def signup(email: str, password: str, first_name: Optional[str] = None, last_name: Optional[str] = None) -> Tuple[bool, str]:
+def signup(email: str, password: str, first_name: Optional[str] = None, last_name: Optional[str] = None, phone: Optional[str] = None) -> Tuple[bool, str]:
     
     # sign up a new user. Returns(success, message).
     
@@ -52,6 +52,20 @@ def signup(email: str, password: str, first_name: Optional[str] = None, last_nam
         if existing_user:
             return False, "Email already registered"
         
+        # optional: normalize phone and check uniqueness
+        if phone is not None:
+            phone = phone.strip()
+            if phone == "":
+                phone = None
+            else:
+                # ensure phone not already registered
+                try:
+                    existing_phone_user = db.get_user_by_phone(phone)
+                except Exception:
+                    existing_phone_user = None
+                if existing_phone_user:
+                    return False, "Phone number already registered"
+
         # hash password and create user
         password_hash = hash_password(password)
         
@@ -66,7 +80,8 @@ def signup(email: str, password: str, first_name: Optional[str] = None, last_nam
             email=email,
             password_hash=password_hash,
             first_name=first_name,
-            last_name=last_name
+            last_name=last_name,
+            phone=phone
         )
         
         # verify the user was created properly
@@ -79,27 +94,31 @@ def signup(email: str, password: str, first_name: Optional[str] = None, last_nam
         print(f"Signup error: {str(e)}")
         return False, f"Error creating user: {str(e)}"
 
-def login(email: str, password: str) -> Tuple[bool, str]:
-    
-    # authenticate a user. Returns(success, message)
+def login(email_or_phone: str, password: str) -> Tuple[bool, str, Optional[str]]:
+    """
+    Authenticate a user by email or phone number. 
+    Returns (success, message, user_email).
+    user_email will be None if login fails, otherwise contains the user's email address.
+    """
     try:
-        user = db.get_user(email)
+        user = db.get_user_by_email_or_phone(email_or_phone)
         if not user:
-            return False, "User not found"
+            return False, "User not found", None
         
         if not user['password_hash']:
-            return False, "Password not set for this user"
+            return False, "Password not set for this user", None
         
         # debug print to check the stored hash
-        print(f"Stored hash for {email}: {user['password_hash']}")
+        user_email = user['email']  # always return email for session
+        print(f"Stored hash for {user_email}: {user['password_hash']}")
         
         if verify_password(password, user['password_hash']):
-            return True, "Login successful"
+            return True, "Login successful", user_email
         
-        return False, "Invalid password"
+        return False, "Invalid password", None
     except Exception as e:
         print(f"Login error: {str(e)}")
-        return False, "An error occurred during login. Please try again."
+        return False, "An error occurred during login. Please try again.", None
 
 
 def reset_password(email: str, new_password: str) -> Tuple[bool, str]:
