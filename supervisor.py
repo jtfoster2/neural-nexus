@@ -49,7 +49,7 @@ def supervisor(state: AgentState):
         try:
             resp = model.invoke(
                 "Classify the user's intent as one of: "
-                "['order_event','check order','shipping status','billing','change password','change address',"
+                "['check order','shipping status','billing','change password','change address',"
                 "'refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
