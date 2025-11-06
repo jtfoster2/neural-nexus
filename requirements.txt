@@ -1,17 +1,8 @@
 langchain
 langchain-google-genai
-<<<<<<< HEAD
-langgraph<0.2.0
-google-generativeai==0.5.4
-python-dotenv==1.0.1
-streamlit==1.50.0
-pydantic==1.10.14
-=======
-langgraph
-google-generativeai
+langgraphoogle-generativeai
 python-dotenv
 streamlit
 pydantic==1.*
->>>>>>> fc45b47c29946f5c42a0b66ff4a2db1071d76d3b
 sendgrid
 passlib[bcrypt]
