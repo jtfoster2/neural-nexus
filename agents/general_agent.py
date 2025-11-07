@@ -31,7 +31,7 @@ model = ChatGoogleGenerativeAI(
     #stream=True  # enable streaming
 )
 
-model_fast = ChatGoogleGenerativeAI( #currenly used for summarization
+model_fast = ChatGoogleGenerativeAI( #currenly used for summarization only. 
     model="gemini-2.5-flash-lite", #use gemini-2.5-lite for cheaper option
     google_api_key=os.environ["GOOGLE_API_KEY"],
     temperature=0.1,             #for speed

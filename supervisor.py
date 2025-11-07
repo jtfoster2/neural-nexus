@@ -2,6 +2,7 @@ from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 import os
+import re
 from pathlib import Path
 
 # --- Import specialist agents ---
@@ -52,7 +53,7 @@ def supervisor(state: AgentState):
             resp = model.invoke(
                 "Classify the user's intent as one of: "
                 "['check order','shipping status','billing','change password','change address',"
-                "'refund','live agent','memory','other'].\n"
+                "'change phone number','refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
             )
@@ -63,6 +64,7 @@ def supervisor(state: AgentState):
                 "billing": "billing",
                 "change password": "change password", #changed to change password
                 "change address": "change address",
+                "change phone number": "change phone number",
                 "refund": "refund",
                 "live agent": "live agent",
                 "email agent": "message agent",
@@ -127,6 +129,7 @@ graph.add_conditional_edges(
         "billing": "billing_agent",
         "account": "account_agent",
         "change address": "account_agent",
+        "change phone number": "account_agent",
         "change password": "account_agent",
         "refund": "return_agent",
         "return": "return_agent",
@@ -179,6 +182,7 @@ INTENT_KEYWORDS = {
     "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
     "billing": ["billing", "payment", "charge", "invoice"],
     "change address": ["change address", "update address", "new address"],
+    "change phone number": ["change phone number", "update phone number", "new phone number", "update my phone", "i want to change my phone number", "phone="],
     "change email": ["change email", "update email", "new email"],
     "change password": ["change password", "reset password", "update password", "forgot password", "forgot my password", "lost password"],
     "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],

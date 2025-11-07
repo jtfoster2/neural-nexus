@@ -180,6 +180,24 @@ def get_user_by_email_or_phone(identifier: str) -> Optional[sqlite3.Row]:
 def get_all_users() -> list[sqlite3.Row]:
     return _query("SELECT * FROM users")
 
+def get_user_phone_number(email: str) -> str | None:
+    rows = _query("SELECT phone FROM users WHERE email = ?", (email.lower(),))
+    if not rows:
+        return None
+    row = rows[0]
+    if hasattr(row, "keys") and "phone" in row.keys():
+        return row["phone"]
+    if isinstance(row, (list, tuple)) and row:
+        return row[0]
+    try:
+        return str(row)
+    except Exception:
+        return None
+    
+
+
+
+
 def set_user_password_hash(email: str, password_hash: str): _exec("UPDATE users SET password_hash=? WHERE email=?", (password_hash, email.lower()))
 def set_user_first_name(email: str, first_name: str): _exec("UPDATE users SET first_name=? WHERE email=?", (first_name, email.lower()))
 def set_user_last_name(email: str, last_name: str): _exec("UPDATE users SET last_name=? WHERE email=?", (last_name, email.lower()))
