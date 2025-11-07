@@ -100,6 +100,7 @@ def init_db() -> None:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
         migrate_add_address_columns()  # call a method to add address columns if they don't exist
+        migrate_add_phone_unique_index()  # enforce unique non-null phone numbers when possible
         ensure_example_data()
     print(f"Database initialized at {DB_PATH}")
 
@@ -162,8 +163,40 @@ def get_user(email: str) -> Optional[sqlite3.Row]:
     print(f"User {email} retrieved.")
     return rows[0] if rows else None
 
+def get_user_by_phone(phone: str) -> Optional[sqlite3.Row]:
+    rows = _query("SELECT * FROM users WHERE phone = ?", (phone,))
+    print(f"User with phone {phone} retrieved.")
+    return rows[0] if rows else None
+
+def get_user_by_email_or_phone(identifier: str) -> Optional[sqlite3.Row]:
+    #try email first
+    user = get_user(identifier)
+    if user:
+        return user
+    #then phone
+    return get_user_by_phone(identifier)
+
+
 def get_all_users() -> list[sqlite3.Row]:
     return _query("SELECT * FROM users")
+
+def get_user_phone_number(email: str) -> str | None:
+    rows = _query("SELECT phone FROM users WHERE email = ?", (email.lower(),))
+    if not rows:
+        return None
+    row = rows[0]
+    if hasattr(row, "keys") and "phone" in row.keys():
+        return row["phone"]
+    if isinstance(row, (list, tuple)) and row:
+        return row[0]
+    try:
+        return str(row)
+    except Exception:
+        return None
+    
+
+
+
 
 def set_user_password_hash(email: str, password_hash: str): _exec("UPDATE users SET password_hash=? WHERE email=?", (password_hash, email.lower()))
 def set_user_first_name(email: str, first_name: str): _exec("UPDATE users SET first_name=? WHERE email=?", (first_name, email.lower()))
@@ -256,7 +289,7 @@ def get_conversation(conversation_id: int) -> Optional[str]:
 
 
 # ---------------------------------------------------------------
-# Migrations - Handles schema changes for existing databases (Added Address to users table)
+# Migrations - Handles schema changes for existing databases (Added Address and Unique phone number to users table)
 # ---------------------------------------------------------------
 def migrate_add_address_columns():
     """Add address columns to users table if they don't exist."""
@@ -276,6 +309,36 @@ def migrate_add_address_columns():
             print("Address columns added successfully.")
         else:
             print("Address columns already exist.")
+
+def migrate_add_phone_unique_index():
+    """Create a unique index on users.phone for non-null values to prevent duplicates.
+    This is a no-op if duplicates already exist or the index is present.
+    """
+    with closing(get_connection()) as conn:
+        try:
+            #check if index already exists
+            cur = conn.execute("PRAGMA index_list(users)")
+            indexes = [row[1] for row in cur.fetchall()]
+            if "idx_users_phone_unique" in indexes:
+                return
+
+            #detect duplicates that would break a unique index
+            dupes = conn.execute(
+                "SELECT phone, COUNT(*) c FROM users WHERE phone IS NOT NULL GROUP BY phone HAVING c > 1"
+            ).fetchall()
+            if dupes:
+                print("[Migration] Skipping creation of unique phone index due to existing duplicate phone numbers.")
+                return
+
+            #create a partial unique index
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL"
+            )
+            conn.commit()
+            print("[Migration] Created unique index on users.phone (non-null).")
+        except Exception as e:
+            #non-fatal; log and continue
+            print(f"[Migration] Failed to create unique phone index: {e}")
 
 # ---------------------------------------------------------------
 # Entrypoint
