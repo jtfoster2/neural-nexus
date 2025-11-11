@@ -28,6 +28,15 @@ def billing_agent(state: AgentState) -> AgentState:
     
 #Need to add version of this method for mass payments lookup?
 def get_payment_status(state: AgentState) -> AgentState:
+    
+    #Check User is Logged In
+    email = (state.get("email") or "").strip().lower()
+    if not email or email == " ":
+        state["output"] = (
+            "You're currently using a guest session. Please log in or sign up to manage your password."
+        )
+        return state
+    
     state["output"] = "Please provide a payment ID to check its status."
     payment_id = state.get("input", "").strip()
     result = db.get_payment_status(payment_id)
