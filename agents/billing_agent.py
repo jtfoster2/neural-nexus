@@ -11,17 +11,17 @@ class AgentState(TypedDict, total=False):
     tool_results: List[str]
     output: Optional[str]
     
-# ---------- billing_agent function ----------
+# ---------- billing_agent functionalities ----------
 def billing_agent(state: AgentState) -> AgentState:
     intent = state.get("intent") or "".lower().strip()
-    
+    # Handle different billing-related intents
     if intent == "check payment":
         return get_payment_status(state)
     else: 
         state["output"] = state["output"] = (
             "Hello! "
-            "I can help with  on the status of payments associated with your account. "
-            "Please enter the ID of the payment you would like to check."
+            "I can help check the status of payments associated with your account. "
+            "Please enter the payment ID of the payment you would like to check."
         )
         return state
 
@@ -38,9 +38,9 @@ def get_payment_status(state: AgentState) -> AgentState:
         return "I couldn’t find any payments associated with this account and payment id."
     parts = []
     if payment_id:
-        parts.append(f"The payment status of **{payment_id}** is **{status}**.")
+        parts.append(f"The payment status of payment **{payment_id}** is **{status}**.")
     if created_at:
-        parts.append(f"(This Payment was processed at {created_at}.)")
+        parts.append(f"(This payment was processed at {created_at}.)")
     state["output"] = " ".join(parts)
     return state
 
