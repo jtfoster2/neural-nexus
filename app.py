@@ -754,31 +754,36 @@ if st.session_state.user_email:
     def handle_option_button(option):
         handle_option(option)
     with col1:
-        if st.button("Change Password", use_container_width=True):
-            st.session_state.pending_prompt = "Change Password"
+        if st.button("Change Name", use_container_width=True):
+            st.session_state.pending_prompt = "Change Name"
             st.rerun()
     with col2:
-        if st.button("Refund", use_container_width=True):
-            st.session_state.pending_prompt = "Refund"
+        if st.button("Change Phone", use_container_width=True):
+            st.session_state.pending_prompt = "Change Phone Number"
             st.rerun()
     with col3:
-        if st.button("Check Order", use_container_width=True):
-            st.session_state.pending_prompt = "Check Order"
-            st.rerun()
-    with col4:
-        if st.button("Shipping Status", use_container_width=True):
-            st.session_state.pending_prompt = "Shipping Status"
-            st.rerun()
-    col5, col6, col7 = st.columns(3)
-    with col5:
         if st.button("Change Address", use_container_width=True):
             st.session_state.pending_prompt = "Change Address"
             st.rerun()
-    with col6:
+    with col4:
         if st.button("Live Agent", use_container_width=True):
             st.session_state.pending_prompt = "Live Agent"
             st.rerun()
+    
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        if st.button("Shipping Status", use_container_width=True):
+            st.session_state.pending_prompt = "Shipping Status"
+            st.rerun()
+    with col6:
+        if st.button("Check Order", use_container_width=True):
+            st.session_state.pending_prompt = "Check Order"
+            st.rerun()
     with col7:
+        if st.button("Refund", use_container_width=True):
+            st.session_state.pending_prompt = "Refund"
+            st.rerun()
+    with col8:
         if st.button("Billing", use_container_width=True):
             st.session_state.pending_prompt = "Billing"
             st.rerun()

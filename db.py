@@ -235,6 +235,7 @@ def set_order_total(order_id: str, total_cents: int): _exec("UPDATE orders SET t
 
 def list_orders_for_user(email: str): return _query("SELECT * FROM orders WHERE email=? ORDER BY created_at DESC", (email.lower(),))
 
+
 # ---------------------------------------------------------------
 # ORDER ITEMS
 # ---------------------------------------------------------------

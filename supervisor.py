@@ -53,7 +53,7 @@ def supervisor(state: AgentState):
             resp = model.invoke(
                 "Classify the user's intent as one of: "
                 "['check order','shipping status','billing','change password','change address',"
-                "'change phone number','refund','live agent','memory','other'].\n"
+                "'change phone number', 'change full name', 'refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
             )
@@ -62,9 +62,10 @@ def supervisor(state: AgentState):
                 "check order": "check order",
                 "shipping status": "shipping status",
                 "billing": "billing",
-                "change password": "change password", #changed to change password
+                "change password": "change password",
                 "change address": "change address",
                 "change phone number": "change phone number",
+                "change full name": "change full name",
                 "refund": "refund",
                 "live agent": "live agent",
                 "email agent": "message agent",
@@ -130,6 +131,7 @@ graph.add_conditional_edges(
         "account": "account_agent",
         "change address": "account_agent",
         "change phone number": "account_agent",
+        "change full name": "account_agent",
         "change password": "account_agent",
         "refund": "return_agent",
         "return": "return_agent",
@@ -183,6 +185,7 @@ INTENT_KEYWORDS = {
     "billing": ["billing", "payment", "charge", "invoice"],
     "change address": ["change address", "update address", "new address"],
     "change phone number": ["change phone number", "update phone number", "new phone number", "update my phone", "i want to change my phone number", "phone="],
+    "change full name": ["change full name", "update full name", "change name", "update name", "edit name", "new name", "change my name", "update my name", "update my full name", "first=", "last="],
     "change email": ["change email", "update email", "new email"],
     "change password": ["change password", "reset password", "update password", "forgot password", "forgot my password", "lost password"],
     "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
