@@ -33,7 +33,7 @@ def get_payment_status(state: AgentState) -> AgentState:
     email = (state.get("email") or "").strip().lower()
     if not email or email == " ":
         state["output"] = (
-            "You're currently using a guest session. Please log in or sign up to manage your password."
+            "You're currently using a guest session. Please log in to check payment status."
         )
         return state
     
