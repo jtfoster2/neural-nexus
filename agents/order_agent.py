@@ -6,25 +6,9 @@ from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage
 from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
-import os
 from sendgrid.helpers.mail import Mail
 import sys
 import os
-import db
-
-
-# Add parent directory to sys.path to enable agentic_ai imports
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
-
-db_path = os.getenv("DB_PATH", "agentic_ai.db")
-try:
-    import agentic_ai.db as db  # type: ignore
-except ImportError:
-    # Fallback to local db module if agentic_ai package is not available
-    import db  # type: ignore
-
 
 # load environment variables from .env file
 load_dotenv()
