@@ -1,7 +1,9 @@
-# supervisor.py
 from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+import os
+import re
+from pathlib import Path
 
 # --- Import specialist agents ---
 from agents.order_agent import order_agent
@@ -12,6 +14,7 @@ from agents.message_agent import message_agent
 from agents.return_agent import return_agent
 from agents.live_agent_router import live_agent_router
 from agents.memory_agent import memory_agent
+from agents.policy_agent import policy_agent
 
 # --- Import generalist agent components ---
 from agents.general_agent import general_agent, model  #Fallback LLM
@@ -27,7 +30,7 @@ class AgentState(TypedDict):
     output: Optional[str]
     routing_msg: Optional[str]
 
-#Top-level router. Determines user intent and writes it to state['intent'].
+#Top-level router. Determines user intent and writes it to state['intent']
 def supervisor(state: AgentState):
 
     text = state["input"]
@@ -37,14 +40,20 @@ def supervisor(state: AgentState):
     #Finds intent using keyword matching and LLM fallback
     intent = (detect_intent(text) or "").strip().lower()
 
+    if (intent == "policy"): #inject policy text into state for policy agent
+        txt = os.getenv("return_policy.txt") 
+        state["return_policy"] = txt
+        print("[SUPERVISOR] Injected return_policy into state for policy agent.")
+
+
 
 
     if not intent:
         try:
             resp = model.invoke(
                 "Classify the user's intent as one of: "
-                "['check order','shipping status','billing','forgot password','change address',"
-                "'refund','live agent','memory','other'].\n"
+                "['check order','shipping status','billing','change password','change address',"
+                "'change phone number','refund','live agent','memory','other'].\n"
                 f"User: {text}\n"
                 "Return just the label."
             )
@@ -55,7 +64,9 @@ def supervisor(state: AgentState):
                 "billing": "billing",
                 "check payment": "check payment",
                 "forgot password": "forgot password",
+                "change password": "change password", #changed to change password
                 "change address": "change address",
+                "change phone number": "change phone number",
                 "refund": "refund",
                 "live agent": "live agent",
                 "email agent": "message agent",
@@ -63,6 +74,9 @@ def supervisor(state: AgentState):
                 "live agent": "live agent",
                 "memory": "memory",
                 "chat history": "memory",
+                "policy": "policy",                 
+                "return policy": "policy",          
+                "warranty": "policy",  
                 "other": "other", #general_agent
             }
             intent = known.get(label, "other")
@@ -95,6 +109,7 @@ graph.add_node("return_agent", return_agent)
 graph.add_node("live_agent_router", live_agent_router)
 graph.add_node("memory_agent", memory_agent)
 graph.add_node("message_agent", message_agent)
+graph.add_node("policy_agent", policy_agent)
 graph.add_node("general_agent", general_agent)
 
 graph.set_entry_point("supervisor")
@@ -116,23 +131,26 @@ graph.add_conditional_edges(
         "billing": "billing_agent",
         "check payment": "billing_agent",
         "forgot password": "account_agent",
+        "account": "account_agent",
         "change address": "account_agent",
+        "change phone number": "account_agent",
+        "change password": "account_agent",
         "refund": "return_agent",
         "return": "return_agent",
         "message": "message_agent",
         "message agent": "message_agent",
         "email agent": "message_agent",
         "live agent": "live_agent_router",
-        "live agent": "live_agent_router",
+        "policy": "policy_agent", 
         "memory": "memory_agent",
-        "other": "general_agent", # fallback to your general agent
+        "other": "general_agent", # fallback to general agent
     },
 )
 
 # Specialists Agents
 for terminal in [
     "order_agent", "shipping_agent", "billing_agent", "account_agent", 
-    "return_agent", "message_agent", "live_agent_router", "memory_agent"
+    "return_agent", "message_agent", "live_agent_router", "memory_agent", "policy_agent"
 ]:
     graph.add_edge(terminal, END)
 
@@ -141,34 +159,9 @@ graph.add_edge("general_agent", END)
 
 memory = MemorySaver()
 app = graph.compile(checkpointer=memory)
-
-
-def ask_agent(query: str, thread_id: str = "default", email: str | None = None) -> str:
-
-    state: AgentState = {
-        "input": query,
-        "email": email,
-        "intent": None,
-        "reasoning": None,
-        "tool_calls": [],
-        "tool_results": [],
-        "output": None,
-        "routing_msg": None,
-    }
-    result = app.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    routing_msg = result.get("routing_msg") #extract routing message
-    output = result.get("output") or ""
-    if routing_msg:
-        return f"{routing_msg}\n\n{output}"
-    else:
-        return output
     
 def ask_agent_events(query: str, thread_id: str = "default", email: str | None = None):
-    """
-    Yields tuples of (kind, text) as the graph progresses:
-      ("routing", "Routing to **…** agent...")
-      ("output",  "<final agent reply>")
-    """
+
     state: AgentState = {
         "input": query,
         "email": email,
@@ -194,13 +187,16 @@ INTENT_KEYWORDS = {
     "billing": ["billing", "payment", "charge", "invoice"],
     "check payment": ["payment status", "check payment", "payment"],
     "change address": ["change address", "update address", "new address"],
+    "change phone number": ["change phone number", "update phone number", "new phone number", "update my phone", "i want to change my phone number", "phone="],
     "change email": ["change email", "update email", "new email"],
-    "forgot password": ["forgot password", "reset password", "lost password", "password"],
+    "change password": ["change password", "reset password", "update password", "forgot password", "forgot my password", "lost password"],
+    "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
     "refund": ["refund", "return", "money back"],
     "message agent": ["message agent", "notify user", "email user", "send confirmation", "send me an email"],
     "email agent": ["email agent", "send email", "message"],
     "live agent": ["live agent", "human agent", "chat with agent"],
-    "memory": ["history", "memory", "chat history"]
+    "memory": ["history", "memory", "chat history"],
+    
 }
 
 def detect_intent(user_input: Optional[str]):
