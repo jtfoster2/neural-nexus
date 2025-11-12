@@ -30,7 +30,6 @@ class AgentState(TypedDict):
     tool_results: List[str]
     output: Optional[str]
 
-
  # ---langraph Logger---
 graph = StateGraph(AgentState)
 
@@ -101,7 +100,8 @@ def log_orders(email: str, orders: List[OrderItem]):
             }
         )
     print(f"[LOG] {len(orders)} orders logged for {email}")
-# --- Generate Gemini Summary ---
+
+ # --- Generate Gemini Summary ---
 
 
 def generate_order_summary(orders: List[OrderItem]) -> str:
@@ -181,5 +181,18 @@ def log_order_confirmation(email: str, order_id: str):
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
 
+ # --- END OF AGENT DEFINITION ---
+ # ---run order agent-----------
 
-# --- END OF AGENT DEFINITION ---
+
+def run_order_agent(state: AgentState) -> AgentState:
+    if not isinstance(state, dict):
+        state = {"input": str(state)}
+    try:
+        return order_agent(state)
+    except Exception as e:
+        state.setdefault("tool_calls", [])
+        state.setdefault("tool_results", [])
+        state["tool_results"].append(f"[FATAL] {e!r}")
+        state["output"] = "Sorry—something went wrong while checking your orders."
+        return state
