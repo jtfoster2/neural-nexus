@@ -329,7 +329,7 @@ class MessageAgent:
                 "If you didn’t request this change, reply to this email so we can investigate.\n"
                 f"{ self._sig(name) }"
         )
-        return subject, body
+            return subject, body
 
         # ---- Common order/shipping events ----
         if et in {"shipped", "delivered", "in_transit"}:
