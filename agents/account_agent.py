@@ -167,7 +167,7 @@ def change_full_name_agent(state: AgentState) -> AgentState:
     # GUARD! must have an email (non-guest)
     if not email or email == " ":
         state["output"] = (
-            "You're currently using a guest session. Please log in or sign up to manage your address."
+            "You're currently using a guest session. Please log in or sign up to manage your name."
         )
         return state
     
@@ -187,7 +187,7 @@ def change_full_name_agent(state: AgentState) -> AgentState:
     pretty = _format_full_name(user)
     instructions = (
         "Sure — you can update your full name here by replying in one line, for example:\n"
-        "First=Jane, Last=Doe\n\n"
+        "first=Jane, last=Doe\n\n"
         "Or open Settings → Profile and edit your full name section there."
     )
     state["output"] = (pretty + "\n\n" + instructions).strip()
