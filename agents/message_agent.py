@@ -299,7 +299,20 @@ class MessageAgent:
                 f"{ self._sig(name) }"
             )
             return subject, body
-        
+
+        # ---- Return: return requested ----
+        if et in {"return_requested", "return_requested"}:
+            subject = "Your return request has been received"
+            body = (
+                f"Hi {recipient},\n\n"
+                f"Your Return for order. {order_id} was successfully submitted to your vendor!\n\n"
+                "We will review your request and send you a confirmation email once it's processed.\n\n"
+                "If you have any questions, feel free to reply to this email.\n"
+                f"{ self._sig(name) }"
+
+            )
+            return subject, body
+
         # ---- Account: changed ----
         if et in {"account_updated", "account_changed"}:
             subject = "Your account has been updated"
