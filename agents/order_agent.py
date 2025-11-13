@@ -30,7 +30,8 @@ class AgentState(TypedDict):
     tool_results: List[str]
     output: Optional[str]
 
- # ---langraph Logger---
+
+# ---langraph Logger---
 graph = StateGraph(AgentState)
 
 # Define Pydantic model for order details
@@ -55,7 +56,8 @@ class AgentStateModel(BaseModel):
     tool_results: List[str] = []
     output: Optional[str] = None
 
-  # Pydantic models for data extraction using Gemini LLM
+
+# Pydantic  models for data extraction using Gemini LLM
 
 
 def extract_orders_details(raw_orders_json: str) -> List[OrderItem]:
@@ -85,7 +87,7 @@ def extract_orders_details(raw_orders_json: str) -> List[OrderItem]:
         print(f"[GEMINI ERROR] {e}")
         return []
 
-  # --- LangGraph Logging ---
+# --- LangGraph Logging ---
 
 
 def log_orders(email: str, orders: List[OrderItem]):
@@ -101,25 +103,8 @@ def log_orders(email: str, orders: List[OrderItem]):
         )
     print(f"[LOG] {len(orders)} orders logged for {email}")
 
- # --- Generate Gemini Summary ---
 
-
-def generate_order_summary(orders: List[OrderItem]) -> str:
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    order_list_text = "\n".join(
-        [f"- {o.product} (x{o.qty}), ${o.price:.2f}, status: {o.status}" for o in orders]
-    )
-    prompt = f"Generate a friendly HTML summary of the following orders suitable for an email:\n{order_list_text}"
-    try:
-        response = model.generate_content(prompt)
-        summary_html = response.text.strip()
-    except Exception as e:
-        print(f"[GEMINI ERROR] {e}")
-        summary_html = "<p>Here are your recent orders:</p>"
-
-    return f"{summary_html}"
-
- # ---agent definition---
+# ---agent definition---
 
 
 def order_agent(state: dict) -> dict:
@@ -150,12 +135,27 @@ def order_agent(state: dict) -> dict:
 
     # --- Log events ---
     log_orders(state_model.email, orders)
-    # --- Generate order summary ---
-    html_summary = generate_order_summary(orders)
-    state_model.output = html_summary
+
+    # --- Generate summary via Gemini ---
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    order_list_text = "\n".join(
+        [f"- {o.product} (x{o.qty}), ${o.price:.2f}, status: {o.status}" for o in orders])
+    summary_prompt = f"""
+    Generate a friendly summary of the following orders, suitable for displaying to the user:
+    {order_list_text}
+
+    """
+    try:
+        response = model.generate_content(summary_prompt)
+        summary_text = response.text.strip()
+    except Exception as e:
+        print(f"[GEMINI ERROR] {e}")
+        summary_text = "Here are your recent orders:\n" + order_list_text
+    state_model.output = summary_text
     return state_model.dict()
 
- # --- END OF AGENT DEFINITION ---
+# --- END OF AGENT DEFINITION ---
+# --- LangGraph Logging ---
 
 
 def log_order_confirmation(email: str, order_id: str):
@@ -181,8 +181,35 @@ def log_order_confirmation(email: str, order_id: str):
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
 
- # --- END OF AGENT DEFINITION ---
- # ---run order agent-----------
+
+# --- END OF LOGGING FUNCTION ---
+# ---run order agent---
+result = order_agent({
+    "input": "Show me my recent orders",
+    "email": "<user_email>",
+    "intent": "order_lookup",
+    "reasoning": "User wants to see their recent orders",
+    "tool_calls": [],
+    "tool_results": [],
+})
+print(result["output"])
+# test order agent with sample input--
+
+raw_input = """
+
+    User: Jane Doe
+
+    Email: jane@example.com
+
+    Order ID: ORD-5678
+
+    Items:
+
+      - Laptop: 1200 USD
+
+      - Mouse: 25 USD
+
+    """
 
 
 def run_order_agent(state: AgentState) -> AgentState:
@@ -196,3 +223,12 @@ def run_order_agent(state: AgentState) -> AgentState:
         state["tool_results"].append(f"[FATAL] {e!r}")
         state["output"] = "Sorry—something went wrong while checking your orders."
         return state
+# example usage:
+# initial_state = {"input": "Show me my recent orders", "email": "user@example.com"}
+# test order agent with sample input--
+
+
+initial_state = {"input": raw_input, "email": "bob.smith@gmail.com",
+                 "orders": extract_orders_details(raw_input), "tool_calls": [], "tool_results": [], "output": None}
+final_state = run_order_agent(initial_state)
+print(final_state["output"])
