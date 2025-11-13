@@ -1,6 +1,7 @@
 import db
 import re
 from typing import TypedDict, Optional, List, Dict, Any
+from agents import message_agent as msg
 
 class AgentState(TypedDict):
     input: str
@@ -88,6 +89,11 @@ def change_address_agent(state: AgentState) -> AgentState:
         state["output"] = (
             "Your address has been updated. Current address on file:\n" + pretty
         )
+        msg.message_agent({ #sends notification email to user
+            "email": email,
+            "name": db.get_user_first_name(email) or "",
+            "event_type": "account_address_changed",
+        })
         return state
     
     # show current address and instructions

@@ -200,7 +200,13 @@ def get_user_phone_number(email: str) -> str | None:
 
 def set_user_password_hash(email: str, password_hash: str): _exec("UPDATE users SET password_hash=? WHERE email=?", (password_hash, email.lower()))
 def set_user_first_name(email: str, first_name: str): _exec("UPDATE users SET first_name=? WHERE email=?", (first_name, email.lower()))
+def get_user_first_name(email: str) -> Optional[str]:
+    rows = _query("SELECT first_name FROM users WHERE email = ?", (email,))
+    return rows[0]["first_name"] if rows else None
 def set_user_last_name(email: str, last_name: str): _exec("UPDATE users SET last_name=? WHERE email=?", (last_name, email.lower()))
+def get_user_last_name(email: str) -> Optional[str]:
+    rows = _query("SELECT last_name FROM users WHERE email = ?", (email,))
+    return rows[0]["last_name"] if rows else None
 def set_user_phone(email: str, phone: str): _exec("UPDATE users SET phone=? WHERE email=?", (phone, email.lower()))
 def set_user_address_line(email: str, address_line: str): _exec("UPDATE users SET address_line=? WHERE email=?", (address_line, email.lower()))
 def set_user_city(email: str, city: str): _exec("UPDATE users SET city=? WHERE email=?", (city, email.lower()))
