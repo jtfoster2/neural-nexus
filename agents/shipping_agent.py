@@ -14,6 +14,12 @@ class AgentState(TypedDict, total=False):
     output: Optional[str]
     confidence: float
 
+# Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
+
 # ---------- Tool Layer --------------
 Tool = Callable[..., Any]
 

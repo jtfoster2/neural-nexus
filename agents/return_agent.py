@@ -1,5 +1,5 @@
 import re
-from typing import TypedDict, Optional, List, Dict
+from typing import TypedDict, Optional, List, Dict, Any
 
 import db
 from agents import message_agent as msg
@@ -13,6 +13,12 @@ class AgentState(TypedDict):
     tool_calls: List[str]
     tool_results: List[str]
     output: Optional[str]
+
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
 
 def return_agent(state: AgentState) -> AgentState:
     print("[AGENT] return_agent selected")

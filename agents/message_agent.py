@@ -37,6 +37,12 @@ class AgentState(TypedDict, total=False):
     old_address: Optional[str]
     new_address: Optional[str]
 
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
+
 def send_email(to_email: str, subject: str, value: str):
 
     sendgrid_key = os.environ.get("SENDGRID_API_KEY") # Your SendGrid API key
@@ -219,7 +225,6 @@ class MessageAgent:
         return s if len(s) <= limit else s[:limit] + "…"
 
     # --------- message templating ---------
-    # inside class MessageAgent
 
     @staticmethod
     def _sig(name: Optional[str]) -> str:
@@ -252,16 +257,17 @@ class MessageAgent:
         recipient = name or "there"
 
         # ---- Account: email changed ----
-        if et in {"account_updated", "account_changed"}:
-            subject = "Your account has been updated"
-            extra = (details + "\n") if details else "" # stops syntax error when outside f-string
-
+        if et in {"account_email_changed", "email_changed"}:
+            subject = "Your account email was changed"
             body = (
                 f"Hi {recipient},\n\n"
-                "Your account details have been updated.\n\n"
+                "We want to let you know your account email was updated.\n\n"
                 "Summary of change:\n"
-                f"{extra}"
-                "If you didn’t request this change, reply to this email so we can investigate.\n"
+                f"- Previous email: { self._mask_email(getattr(self, 'old_email', None) or '') }\n"
+                f"- New email:      { self._mask_email(getattr(self, 'new_email', email) or '') }\n"
+                f"{(details + '\\n') if details else ''}"
+                "If you made this change, no action is needed.\n"
+                "If you didn’t request this, please reply to this email immediately.\n"
                 f"{ self._sig(name) }"
             )
             return subject, body
@@ -269,8 +275,6 @@ class MessageAgent:
         # ---- Account: password changed ----
         if et in {"account_password_changed", "password_changed"}:
             subject = "Your password was changed"
-            extra = (details + "\n") if details else "" # stops syntax error when outside f-string
-
             body = (
                 f"Hi {recipient},\n\n"
                 "Your account password was recently changed.\n\n"
@@ -278,7 +282,7 @@ class MessageAgent:
                 "- If this wasn’t you, reset your password right away.\n"
                 "- Enable two-factor authentication in your account settings.\n"
                 "- Review recent sign-ins for anything unfamiliar.\n\n"
-                f"{extra}"
+                f"{(details + '\\n\\n') if details else ''}"
                 "Need a hand? Reply to this email and we’ll help secure your account.\n"
                 f"{ self._sig(name) }"
             )
@@ -287,48 +291,31 @@ class MessageAgent:
         # ---- Account: address changed ----
         if et in {"account_address_changed", "address_changed"}:
             subject = "Your account address was updated"
-            extra = (details + "\n") if details else "" # stops syntax error when outside f-string
             old_addr = getattr(self, "old_address", None)
             new_addr = getattr(self, "new_address", None)
-
             body = (
                 f"Hi {recipient},\n\n"
                 "Your account mailing/shipping address was updated.\n\n"
                 "Summary of change:\n"
                 f"- Previous address: {old_addr or '(not provided)'}\n"
                 f"- New address:      {new_addr or '(not provided)'}\n"
-                f"{extra}"
+                f"{(details + '\\n') if details else ''}"
                 "If you didn’t request this change, reply to this email so we can investigate.\n"
                 f"{ self._sig(name) }"
             )
             return subject, body
-
-        # ---- Return: return requested ----
-        if et in {"return_requested", "return_requested"}:
-            subject = "Your return request has been received"
-            body = (
-                f"Hi {recipient},\n\n"
-                f"Your Return for order. {order_id} was successfully submitted to your vendor!\n\n"
-                "We will review your request and send you a confirmation email once it's processed.\n\n"
-                "If you have any questions, feel free to reply to this email.\n"
-                f"{ self._sig(name) }"
-
-            )
-            return subject, body
-
+        
         # ---- Account: changed ----
         if et in {"account_updated", "account_changed"}:
             subject = "Your account has been updated"
-            extra = (details + "\n") if details else "" # stops syntax error when outside f-string
-
             body = (
                 f"Hi {recipient},\n\n"
                 "Your account details have been updated.\n\n"
                 "Summary of change:\n"
-                f"{extra}"
+                f"{(details + '\\n') if details else ''}"
                 "If you didn’t request this change, reply to this email so we can investigate.\n"
                 f"{ self._sig(name) }"
-        )
+            )
             return subject, body
 
         # ---- Common order/shipping events ----
@@ -339,25 +326,21 @@ class MessageAgent:
                 "in_transit": "Your order is in transit",
             }[et]
             subject = f"{pretty}"
-            extra = (details + "\n") if details else "" # stops syntax error when outside f-string
             prefix = f"**Order {order_id}** " if order_id else "Your order "
-
             body = (
                 f"Hi {recipient},\n\n"
                 f"{prefix}{pretty.lower()}.\n"
-                f"{extra}"
+                f"{(details + '\\n') if details else ''}"
                 f"{ self._sig(name) }"
             )
             return subject, body
 
         if et in {"action_required"}:
             subject = "Action required for your order"
-            extra = (details + "\n") if details else "" # stops syntax error when outside f-string
-
             body = (
                 f"Hi {recipient},\n\n"
                 "We need a quick confirmation to continue processing your order.\n"
-                f"{extra}"
+                f"{(details + '\\n') if details else ''}"
                 f"{ self._sig(name) }"
             )
             return subject, body
