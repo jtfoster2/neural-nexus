@@ -16,6 +16,8 @@ db.init_db()
 
 # load environment variables from .env file
 load_dotenv()
+# Configure Google Gemini API
+genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
 
 # Initialize SendGrid client
 sendgrid_client = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
@@ -66,7 +68,7 @@ def extract_orders_details(raw_orders_json: str) -> List[OrderItem]:
     and validate with Pydantic.
     """
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
 
@@ -137,7 +139,7 @@ def order_agent(state: dict) -> dict:
     log_orders(state_model.email, orders)
 
     # --- Generate summary via Gemini ---
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     order_list_text = "\n".join(
         [f"- {o.product} (x{o.qty}), ${o.price:.2f}, status: {o.status}" for o in orders])
     summary_prompt = f"""
