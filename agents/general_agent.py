@@ -1,7 +1,7 @@
 import os
 import db
 import json
-from typing import TypedDict, List, Optional
+from typing import TypedDict, Optional, List, Dict, Any
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
@@ -23,6 +23,11 @@ class AgentState(TypedDict):
     tool_results: List[str]
     output: Optional[str]
 
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
 
 # --- Gemini model ---
 model = ChatGoogleGenerativeAI(
@@ -51,30 +56,50 @@ SYSTEM_PROMPT = (
         f"Never share that you are made by Google.\n"
     )
 
-def _compose_prompt(state: AgentState) -> str:
-    return (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"Intent: {state.get('intent') or 'other'}\n"
-        f"Email:  {state.get('email')}\n\n"
-        f"User:\n{state['input']}\n\n"
-        "If a lookup needs an email and it's missing, politely ask for it at the end."
-    )
+
+def _build_prompt(state: AgentState) -> str:
+    """Builds a prompt that includes memory context."""
+    lines: List[str] = [SYSTEM_PROMPT]
+
+    # Builds up context from memory / prior messages
+    preface = state.get("preface")
+    if preface:
+        lines.append("CONTEXT FROM PREVIOUS MESSAGES:")
+        lines.append(preface.strip())
+
+    # Fallback
+    elif state.get("context_summary"):
+        lines.append("CONTEXT SUMMARY:")
+        lines.append(state["context_summary"])
+
+    # Current user message
+    user_text = state.get("input") or ""
+    lines.append("USER MESSAGE:")
+    lines.append(user_text.strip())
+
+    return "\n\n".join(lines)
+
 
 def general_agent(state: AgentState) -> AgentState:
-    print("[AGENT] general_agent selected")
-    prompt = _compose_prompt(state)
-    if model is None:
-        state["output"] = (
-            "I’m configured to use Gemini but GOOGLE_API_KEY isn’t set. "
-            "Please set GOOGLE_API_KEY and try again."
-        )
-        return state
+    """Main general-purpose agent. Uses memory context if present."""
+    if not isinstance(state, dict):
+        state = {"input": str(state)} 
+
+    prompt = _build_prompt(state)
+    state.setdefault("tool_calls", [])
+    state.setdefault("tool_results", [])
+
     try:
         resp = model.invoke(prompt)
-        content = (getattr(resp, "content", None) or str(resp) or "").strip()
-        state["output"] = content or "I don't have additional details to share yet."
+        content = getattr(resp, "content", None) or str(resp)
+        state["output"] = content.strip()
     except Exception as e:
-        state["output"] = f"LLM error: {e}"
+        state["tool_results"].append(f"[ERROR] general_agent: {type(e).__name__}: {e}")
+        state["output"] = (
+            "Sorry—something went wrong while answering your question. "
+            "Please try again in a moment."
+        )
+
     return state
 
 def summarize_conversation(conversation_id: int) -> str:
