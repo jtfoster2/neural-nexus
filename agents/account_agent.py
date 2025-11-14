@@ -65,7 +65,7 @@ def change_password_agent(state: AgentState) -> AgentState:
     user = db.get_user(email)
     if (not user) or (not (user["password_hash"] or "")):
         state["output"] = (
-            "I can help you set a password. Open Settings → Security, enter a new password, and save."
+            "I can't help you change your password. Please open Settings → Security, enter a new password, and save."
         )
     else:
         state["output"] = (
@@ -92,9 +92,9 @@ def change_address_agent(state: AgentState) -> AgentState:
     # --------------------------------------------------
     # Tries to detect a one-line address in message
     # --------------------------------------------------
-    m = ADDRESS_RE.search(text)
-    if m:
-        addr = m.group(0)
+    address = ADDRESS_RE.search(text)
+    if address:
+        addr = address.group(0)
         parts = [p.strip() for p in addr.split(",")]
         if len(parts) == 3:
             street = parts[0]
