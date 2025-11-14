@@ -160,9 +160,10 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
     """
     Handles phone number change requests.
     Flow: parse -> apply -> read back -> pretty-print.
+
     Accepts:
-      • 'phone=770-888-1234'
-      • 'phone number: (770) 888-1234'
+      • Plain numbers: "770-555-1234", "(770) 555 1234", "+1 (770) 555-1234"
+      • key=value style: "phone=770-555-1234", "phone number: (770) 555-1234"
     """
     print("[AGENT] change_phone_number_agent selected")
     text = (state.get("input") or "").strip()
@@ -175,9 +176,16 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
         )
         return state
 
-    # Parse like address → apply → read back → pretty
-    updates = _parse_phone_updates(text)
-    print("[PHONE] parsed updates:", updates)
+    updates: Dict[str, str] = {}
+
+    # --------------------------------------------------
+    # pulls plain number (e.g. "770-555-1234" or "(770) 555 1234")
+    # --------------------------------------------------
+    digits = re.sub(r"\D", "", text)
+    if len(digits) >= 10:
+        # Take last 10 digits to ignore country codes, etc.
+        updates["phone"] = digits[-10:]
+
     if updates:
         try:
             _apply_phone_updates(email, updates)  # uses set_user_phone(...)
@@ -192,17 +200,34 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
         state["output"] = f"Your phone number has been updated. Current phone on file:\n{pretty}"
         return state
 
-    # No updates parsed — show current + instructions
     current = db.get_user_phone_number(email)
     pretty = _pretty_phone_number(current) if current else "(none on file)"
+
+    # If the message has no digits, treat this as an entry request
+    if not re.search(r"\d", text):
+        state["output"] = (
+            "Sure — let's update your phone number.\n\n"
+            f"Your current phone on file is: {pretty}\n\n"
+            "Please reply with your new number in one of these formats:\n"
+            "• 770-555-1234\n"
+            "• (770) 555-1234\n"
+            "• phone=770-555-1234\n"
+            "• phone number: (770) 555-1234\n\n"
+            "You can also open Settings → Profile and edit your Phone Number there."
+        )
+        return state
+
+    # Fallback instructions
     instructions = (
-        "Reply with your new number in one line, for example:\n"
-        "• phone=770-555-1234\n"
-        "• phone number: (770) 555-1234\n"
+        "I couldn't detect a valid phone number in your last message.\n\n"
+        "Please reply with your new number in one of these formats:\n"
+        "• 770-555-1234\n"
+        "• (770) 555-1234\n"
         "You can also open Settings → Profile and edit your Phone Number there."
     )
     state["output"] = f"Current phone on file: {pretty}\n\n{instructions}"
     return state
+
 
 def change_full_name_agent(state: AgentState) -> AgentState:
     """
