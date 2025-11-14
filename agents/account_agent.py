@@ -163,7 +163,6 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
 
     Accepts:
       • Plain numbers: "770-555-1234", "(770) 555 1234", "+1 (770) 555-1234"
-      • key=value style: "phone=770-555-1234", "phone number: (770) 555-1234"
     """
     print("[AGENT] change_phone_number_agent selected")
     text = (state.get("input") or "").strip()
@@ -211,8 +210,6 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
             "Please reply with your new number in one of these formats:\n"
             "• 770-555-1234\n"
             "• (770) 555-1234\n"
-            "• phone=770-555-1234\n"
-            "• phone number: (770) 555-1234\n\n"
             "You can also open Settings → Profile and edit your Phone Number there."
         )
         return state
