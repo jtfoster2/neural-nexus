@@ -19,6 +19,7 @@ from agents.policy_agent import policy_agent
 # --- General LLM agent ---
 from agents.general_agent import general_agent, model
 
+LAST_INTENT_BY_THREAD: dict[str, str] = {}
 
 class AgentState(TypedDict, total=False):
     input: str
@@ -156,9 +157,20 @@ def supervisor(state: AgentState):
     # --------------------------------------------------------
     # Routing message
     # --------------------------------------------------------
-    intent_label = state.get("intent") or "other"
-    state["routing_msg"] = f"Routing to **{intent_label}** agent..."
-    print(f"[SUPERVISOR] Routing to: {intent_label}")
+    intent_label = (state.get("intent") or "other").lower().strip()
+    thread_id = str(state.get("conversation_id") or "")
+
+    prev_intent = LAST_INTENT_BY_THREAD.get(thread_id)
+
+    if prev_intent == intent_label:
+        # Same agent as last time for this conversation → no routing message
+        state["routing_msg"] = None
+        print(f"[SUPERVISOR] Continuing with: {intent_label} (no routing bubble)")
+    else:
+        # Agent changed → show routing message once
+        LAST_INTENT_BY_THREAD[thread_id] = intent_label
+        state["routing_msg"] = f"Routing to **{intent_label}** agent..."
+        print(f"[SUPERVISOR] Routing to: {intent_label}")
 
     return state
 
