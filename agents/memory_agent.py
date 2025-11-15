@@ -20,9 +20,9 @@ class AgentState(TypedDict, total=False):
     memory: Optional[Dict[str, Any]]
 
 # ------------ Simple REGEX identifiers ------------
-ORDER  = re.compile(r"\bORD[\-_]?\d{3,}\b", re.I) #example: ORD_12345
-PAY    = re.compile(r"\bPAY[\-_]?\d{3,}\b", re.I) #example: PAY_98765
-EMAIL  = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}") #email regex
+ORDER  = re.compile(r"\bORD[\-_]?\d{3,}\b", re.IGNORECASE) #example: ORD_12345
+PAY    = re.compile(r"\bPAY[\-_]?\d{3,}\b", re.IGNORECASE) #example: PAY_98765
+EMAIL  = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", re.IGNORECASE) #email regex
 DATE   = re.compile(r"\b(20\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[/\-]\d{1,2}[/\-]20\d{2})\b") #YYYY-MM-DD or MM/DD/YYYY
 ADDRESS = re.compile(r"\b\d{1,6}\s+[A-Za-z0-9 .'-]+,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\b", re.IGNORECASE,) #US address
 PHONE  = re.compile(r"\b(\+?1[-.\s]?|)\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b") #US phone number
