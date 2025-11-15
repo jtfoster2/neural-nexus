@@ -89,6 +89,41 @@ def orders(orders: str) -> List[Order]:
         print(f"[GEMINI ERROR] {e}")
         return []
 
+# send order confimation email to user using sendgrid
+
+
+def send_order_confirmation_email(to_email: str, orders: List[Order]) -> None:
+    order_lines = "\n".join(
+        [
+            f"- {order.product} (Qty: {order.qty}, Price: ${order.price}, Date: {order.purchase_date.date()}, Status: {order.status})"
+            for order in orders
+        ]
+    )
+    email_content = f"""
+    Dear Customer,
+
+    Thank you for your order! Here are your order details:
+
+    {order_lines}
+
+    If you have any questions, feel free to contact our support team.
+
+    Best regards,
+    Your Company
+    """
+
+    message = Mail(
+        from_email=os.getenv("SENDGRID_FROM_EMAIL"),
+        to_emails=to_email,
+        subject="Your Order Confirmation",
+        plain_text_content=email_content
+    )
+    try:
+        sendgrid_client.send(message)
+        print("Order confirmation email sent successfully.")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
 # --- LangGraph Logging ---
 
 
@@ -109,6 +144,7 @@ def log_orders(email: str, orders: List[Order]):
 # ---agent definition---
 def order_agent(state: AgentState) -> AgentState:
     print("[AGENT] order_agent selected")
+    user = db.get_user(state.get("input") or "")
     user = db.get_user(state.get("email") or "")
     if user:
         # Adjust columns to match your db schema
@@ -136,22 +172,21 @@ def order_agent(state: AgentState) -> AgentState:
                 "\n".join(lines)
         else:
             state["output"] = "No orders found."
-    else:
-        state["output"] = "Please provide your email to look up your orders."
+    # else:
+        # state["output"] = "Please provide your email to look up your orders."
+
+# ---send order confirmation email---
+    send_order_confirmation_email(
+        to_email=state.get("email") or "",
+        orders=[Order(**o) for o in orders(state.get("input") or "")]
+    )
+
+# --notify user email sent--
+    state["output"] += "\n\nA confirmation email has been sent to your email address."
+
     return state
 
-
-# ---run order agent---
-result = order_agent({
-    "input": "Show me my recent orders",
-    "email": "<user_email>",
-    "intent": "order_lookup",
-    "reasoning": "User wants to see their recent orders",
-    "tool_calls": [],
-    "tool_results": [],
-})
-print(result["output"])
-# test order agent with sample input--
+# run order agent with error handling
 
 
 def run_order_agent(state: AgentState) -> AgentState:
@@ -163,18 +198,17 @@ def run_order_agent(state: AgentState) -> AgentState:
         state.setdefault("tool_calls", [])
         state.setdefault("tool_results", [])
         state["tool_results"].append(f"[FATAL] {e!r}")
-        state["output"] = "Sorry—something went wrong while checking your orders."
+        # state["output"] = "Sorry—something went wrong while checking your orders."
         return state
 
 
 # example usage:
-# initial_state = {"input": "Show me my recent orders", "email": "user@example.com"}
 # test order agent with sample input--
 input = """
 
-    User: Jane Doe
+    User: Bob Smith
 
-    Email: jane@example.com
+    Email: bob.smith69844@gmail.com
 
     Order ID: ORD-5678
 
@@ -185,9 +219,8 @@ input = """
       - Mouse: 25 USD
 
     """
-
-
-initial_state = {"input": input, "email": "jane@example.com",
-                 "orders": orders(input), "tool_calls": [], "tool_results": [], "output": None}
+# run order agent
+initial_state = {"input": input, "email": "bob.smith69844@gmail.com",
+                 "orders": orders(input), "tool_calls": ["email"], "tool_results": [], "output": None}
 final_state = run_order_agent(initial_state)
 print(final_state["output"])
