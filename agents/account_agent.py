@@ -26,6 +26,8 @@ def account_agent(state: AgentState) -> AgentState:
         return change_address_agent(state)
     elif intent == "change phone number":
         return change_phone_number_agent(state)
+    elif intent == "change full name":
+        return change_full_name_agent(state)
     else:
         # General account help
         state["output"] = (
@@ -147,6 +149,43 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
     state["output"] = f"Current phone on file: {pretty}\n\n{instructions}"
     return state
 
+def change_full_name_agent(state: AgentState) -> AgentState:
+    """
+    Handles full name change requests.
+    Can parse inline updates or guide to Settings > Profile.
+    """
+    print("[AGENT] change_full_name_agent selected")
+    text = (state.get("input") or "").strip()
+    email = (state.get("email") or "").strip().lower()
+    
+    # GUARD! must have an email (non-guest)
+    if not email or email == " ":
+        state["output"] = (
+            "You're currently using a guest session. Please log in or sign up to manage your address."
+        )
+        return state
+    
+    # try to parse address fields from the message
+    updates = _parse_full_name_updates(text)
+    if updates:
+        _apply_full_name_updates(email, updates)
+        user = db.get_user(email)
+        pretty = _format_full_name(user)
+        state["output"] = (
+            "Your full name has been updated. Current full name on file:\n" + pretty
+        )
+        return state
+    
+    # show current address and instructions
+    user = db.get_user(email)
+    pretty = _format_full_name(user)
+    instructions = (
+        "Sure — you can update your full name here by replying in one line, for example:\n"
+        "First=Jane, Last=Doe\n\n"
+        "Or open Settings → Profile and edit your full name section there."
+    )
+    state["output"] = (pretty + "\n\n" + instructions).strip()
+    return state
 
 
 # ----------------------
@@ -167,17 +206,18 @@ _ADDR_KEYS = {
     "country": "country",
 }
 
-_PHONE_KEYS = {
-    "phone": "phone",
-    "phone number": "phone",
-    "phone_number": "phone",
-    "tel": "phone",
-    "telephone": "phone",
-    "mobile": "phone",
-    "cell": "phone",
-    "cell phone": "phone",
-    "cellphone": "phone",
-}
+# _PHONE_KEYS = {
+#     "phone": "phone",
+#     "phone number": "phone",
+#     "phone_number": "phone",
+#     "tel": "phone",
+#     "telephone": "phone",
+#     "mobile": "phone",
+#     "cell": "phone",
+#     "cell phone": "phone",
+#     "cellphone": "phone",
+# }
+
 
 def _parse_address_updates(text: str) -> Dict[str, str]:
     """
@@ -321,6 +361,74 @@ def _pretty_phone_number(phone_number: Any) -> str:
 
     # Not enough digits — show original so the user sees *something*
     return s
+
+
+_NAME_KEYS = {
+    "first": "first_name",
+    "first name": "first_name", 
+    "last": "last_name",
+    "last name": "last_name",
+    "name": "name",
+}
+
+def _parse_full_name_updates(text: str) -> Dict[str, str]:
+    """
+    Parse name updates from free-form text.
+    Accepts patterns like: key=value or key: value
+    Example: "first=Jane, last=Doe"
+    """
+    if not text:
+        return {}
+    lowered = text.lower()
+    # if none of the name fields are present, skip parsing
+    if not any(k in lowered for k in _NAME_KEYS.keys()):
+        return {}
+
+    # accept patterns "key=value" or "key: value" with optional commas
+    pattern = re.compile(r"\b([a-z_ ]{3,12})\s*[:=]\s*([^,\n]+)")
+    found = pattern.findall(text)
+    updates: Dict[str, str] = {}
+    for raw_key, raw_val in found:
+        key = raw_key.strip().lower()
+        norm = _NAME_KEYS.get(key)
+        if not norm:
+            continue
+        val = raw_val.strip()
+        # collapse whitespace
+        val = re.sub(r"\s+", " ", val)
+        updates[norm] = val
+    return updates
+
+def _apply_full_name_updates(email: str, updates: Dict[str, str]) -> None:
+    """Apply name field updates to the user's record."""
+    if not updates:
+        return
+    if "first_name" in updates:
+        db.set_user_first_name(email, updates["first_name"])
+    if "last_name" in updates:
+        db.set_user_last_name(email, updates["last_name"])
+   
+
+def _format_full_name(user_row) -> str:
+    """Format the user's name nicely for display."""
+    def _row_get(row, key):
+        try:
+            if row is None:
+                return ""
+            return row[key] if key in row.keys() else ""
+        except Exception:
+            return ""
+
+    first_name = _row_get(user_row, "first_name")
+    last_name = _row_get(user_row, "last_name")
+    
+    parts = [first_name, last_name]
+    non_empty = [p for p in parts if (p or "").strip()]
+    if not non_empty:
+        return "You don't have your name on file yet."
+    return " ".join(non_empty)  # Use space instead of comma for names
+
+
 
 
 def _row_get(row, key: str, default: str = "") -> str:
