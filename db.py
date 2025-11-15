@@ -267,7 +267,7 @@ def add_payment(payment_id: str, email: str, order_id: Optional[str], amount_cen
     print(f"Payment {payment_id} for user {email} added/updated.")
 
 def get_payment_by_id(payment_id: str, email: str) -> Optional[sqlite3.Row]:
-    rows = _query("SELECT * FROM payments WHERE payment_id=? AND email=?", (payment_id, email.lower()))
+    rows = _query("SELECT * FROM payments WHERE payment_id = ? AND email = ?", (payment_id.lower(), email.lower()))
     return rows[0] if rows else None
 # --- Key setters for Payments ---
 def set_payment_status(payment_id: str, status: str): _exec("UPDATE payments SET status=? WHERE payment_id=?", (status, payment_id))

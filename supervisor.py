@@ -47,7 +47,7 @@ INTENT_KEYWORDS = {
     "check order": ["order", "orders", "check order", "my order", "track order"],
     "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
     "billing": ["billing", "payment", "charge", "invoice"],
-
+    "check payment": ["payment status", "check payment", "payment"],
     "change address": ["change address", "update address", "new address"],
     "change phone number": ["change phone number", "update phone number", "new phone number", "phone="],
     "change full name": ["change full name", "update full name", "change name", "update name", "first=", "last="],
@@ -86,7 +86,7 @@ def supervisor(state: AgentState):
                 "Classify the user's intent as one of: "
                 "['check order','shipping status','check payment','billing','change password','change address',"
                 "'change phone number','refund','live agent','memory','other'].\n"
-                "['check order','shipping status','billing','change password','change address',"
+                "['check order','shipping status','check payment','billing','change password','change address',"
                 "'change phone number','change full name','refund','live agent','memory','policy','other'].\n"
                 f"User: {text}\nReturn just the label."
             )
@@ -278,7 +278,7 @@ def ask_agent_events(query: str, thread_id: str = "default", email: str | None =
 INTENT_KEYWORDS = {
     "check order": ["order", "orders", "check order", "my order", "track order"],
     "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
-    "billing": ["billing", "payment", "charge", "invoice"],
+    "billing": ["billing", "charge", "invoice"],
     "check payment": ["payment status", "check payment", "payment"],
     "change address": ["change address", "update address", "new address"],
     "change phone number": ["change phone number", "update phone number", "new phone number", "update my phone", "i want to change my phone number", "phone="],
