@@ -7,3 +7,4 @@ streamlit
 pydantic==1.*
 sendgrid
 passlib[bcrypt]
+pytest

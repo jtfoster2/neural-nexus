@@ -31,6 +31,18 @@ class AgentState(TypedDict, total=False):
     cc: Optional[List[str]]
     bcc: Optional[List[str]]
 
+    # Account-change optional fields
+    old_email: Optional[str]
+    new_email: Optional[str]
+    old_address: Optional[str]
+    new_address: Optional[str]
+
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
+
 def send_email(to_email: str, subject: str, value: str):
 
     sendgrid_key = os.environ.get("SENDGRID_API_KEY") # Your SendGrid API key
@@ -214,6 +226,25 @@ class MessageAgent:
 
     # --------- message templating ---------
 
+    @staticmethod
+    def _sig(name: Optional[str]) -> str:
+        return (
+            "\n"
+            "— Capgemini Customer Support\n"
+            "If you didn’t request this change, reply immediately or contact support."
+        )
+
+    @staticmethod
+    def _mask_email(e: Optional[str]) -> str:
+        if not e:
+            return ""
+        try:
+            user, domain = e.split("@", 1)
+            masked_user = (user[0] + "…" + user[-1]) if len(user) > 2 else (user[0] + "…" if user else "…")
+            return f"{masked_user}@{domain}"
+        except Exception:
+            return e
+
     def _build_subject_body(
         self,
         email: Optional[str],
@@ -222,66 +253,105 @@ class MessageAgent:
         details: Optional[str],
         name: Optional[str],
     ) -> tuple[str, str]:
-        """
-        Build (subject, body) from order + event. Safe for f-strings (no backslashes inside {...}).
-        """
         et = (event_type or "status_update").strip().lower()
-        pretty_id = f"Order {order_id}" if order_id else "Your order"
         recipient = name or "there"
 
-        # Helper: ensure optional details line(s) end with a newline when present
-        def details_block(s: Optional[str], extra_newlines: int = 1) -> str:
-            if not s:
-                return ""
-            return s + ("\n" * extra_newlines)
+        # ---- Account: email changed ----
+        if et in {"account_email_changed", "email_changed"}:
+            subject = "Your account email was changed"
+            body = (
+                f"Hi {recipient},\n\n"
+                "We want to let you know your account email was updated.\n\n"
+                "Summary of change:\n"
+                f"- Previous email: { self._mask_email(getattr(self, 'old_email', None) or '') }\n"
+                f"- New email:      { self._mask_email(getattr(self, 'new_email', email) or '') }\n"
+                f"{(details + '\\n') if details else ''}"
+                "If you made this change, no action is needed.\n"
+                "If you didn’t request this, please reply to this email immediately.\n"
+                f"{ self._sig(name) }"
+            )
+            return subject, body
 
-        if et in {"shipped", "shipping", "label_created"}:
-            subject = f"{pretty_id} has shipped"
+        # ---- Account: password changed ----
+        if et in {"account_password_changed", "password_changed"}:
+            subject = "Your password was changed"
             body = (
                 f"Hi {recipient},\n\n"
-                f"Good news — {pretty_id} has shipped.\n"
-                f"{details_block(details)}"
-                "We’ll share more tracking updates as they’re available.\n\n"
-                "Thanks!"
+                "Your account password was recently changed.\n\n"
+                "Security tips:\n"
+                "- If this wasn’t you, reset your password right away.\n"
+                "- Enable two-factor authentication in your account settings.\n"
+                "- Review recent sign-ins for anything unfamiliar.\n\n"
+                f"{(details + '\\n\\n') if details else ''}"
+                "Need a hand? Reply to this email and we’ll help secure your account.\n"
+                f"{ self._sig(name) }"
             )
-        elif et in {"delivered"}:
-            subject = f"{pretty_id} was delivered"
-            body = (
-                f"Hi {recipient},\n\n"
-                f"{pretty_id} has been delivered.\n"
-                f"{details_block(details, extra_newlines=2)}"
-                "If anything looks off, just reply to this email.\n\n"
-                "Best,"
-            )
-        elif et in {"in_transit", "eta_update"}:
-            subject = f"{pretty_id}: in transit"
-            body = (
-                f"Hi {recipient},\n\n"
-                f"{pretty_id} is currently in transit.\n"
-                f"{details_block(details)}"
-                "We’ll keep you posted on the ETA.\n\n"
-                "Thanks!"
-            )
-        elif et in {"issue", "action_required"}:
-            subject = f"Action needed on {pretty_id}"
-            body = (
-                f"Hi {recipient},\n\n"
-                "We need a quick confirmation regarding "
-                f"{pretty_id}.\n"
-                f"{details_block(details)}"
-                "Reply to this email and we’ll take care of it.\n\n"
-                "Thanks!"
-            )
-        else:
-            subject = f"{pretty_id}: update"
-            body = (
-                f"Hi {recipient},\n\n"
-                f"Here’s an update on {pretty_id}.\n"
-                f"{details_block(details)}"
-                "Reach out if you have questions.\n\n"
-                "Best,"
-            )
+            return subject, body
 
+        # ---- Account: address changed ----
+        if et in {"account_address_changed", "address_changed"}:
+            subject = "Your account address was updated"
+            old_addr = getattr(self, "old_address", None)
+            new_addr = getattr(self, "new_address", None)
+            body = (
+                f"Hi {recipient},\n\n"
+                "Your account mailing/shipping address was updated.\n\n"
+                "Summary of change:\n"
+                f"- Previous address: {old_addr or '(not provided)'}\n"
+                f"- New address:      {new_addr or '(not provided)'}\n"
+                f"{(details + '\\n') if details else ''}"
+                "If you didn’t request this change, reply to this email so we can investigate.\n"
+                f"{ self._sig(name) }"
+            )
+            return subject, body
+        
+        # ---- Account: changed ----
+        if et in {"account_updated", "account_changed"}:
+            subject = "Your account has been updated"
+            body = (
+                f"Hi {recipient},\n\n"
+                "Your account details have been updated.\n\n"
+                "Summary of change:\n"
+                f"{(details + '\\n') if details else ''}"
+                "If you didn’t request this change, reply to this email so we can investigate.\n"
+                f"{ self._sig(name) }"
+            )
+            return subject, body
+
+        # ---- Common order/shipping events ----
+        if et in {"shipped", "delivered", "in_transit"}:
+            pretty = {
+                "shipped": "Your order has shipped",
+                "delivered": "Your order was delivered",
+                "in_transit": "Your order is in transit",
+            }[et]
+            subject = f"{pretty}"
+            prefix = f"**Order {order_id}** " if order_id else "Your order "
+            body = (
+                f"Hi {recipient},\n\n"
+                f"{prefix}{pretty.lower()}.\n"
+                f"{(details + '\\n') if details else ''}"
+                f"{ self._sig(name) }"
+            )
+            return subject, body
+
+        if et in {"action_required"}:
+            subject = "Action required for your order"
+            body = (
+                f"Hi {recipient},\n\n"
+                "We need a quick confirmation to continue processing your order.\n"
+                f"{(details + '\\n') if details else ''}"
+                f"{ self._sig(name) }"
+            )
+            return subject, body
+
+        # ---- Final fallback (status_update / unknown) ----
+        subject = "Update from Customer Support"
+        body = (
+            f"Hi {recipient},\n\n"
+            f"{details or 'We wanted to let you know we processed your request.'}\n"
+            f"{ self._sig(name) }"
+        )
         return subject, body
 
 

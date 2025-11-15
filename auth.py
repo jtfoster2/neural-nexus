@@ -1,5 +1,6 @@
 import bcrypt
 import db
+from agents import message_agent as msg
 from typing import Optional, Tuple
 
 def hash_password(password: str) -> str:
@@ -137,6 +138,12 @@ def reset_password(email: str, new_password: str) -> Tuple[bool, str]:
             return False, "Failed to generate password hash"
 
         db.set_user_password_hash(email, password_hash)
+
+        msg.message_agent({ #sends notification email to user
+            "email": email,
+            "name": db.get_user_first_name(email) or "",
+            "event_type": "account_password_changed",
+        })
         return True, "Password updated successfully"
     except Exception as e:
         print(f"Reset password error: {str(e)}")

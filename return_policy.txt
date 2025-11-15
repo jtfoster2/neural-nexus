@@ -1,56 +1,80 @@
-Return Eligibility
-We accept returns on most new, unused, and resalable items within 30 days of the delivery date.
-To qualify for a return:
+Return Eligibility:
+We accept returns on most new, unused, and resalable items within 60 days of delivery. Items must be in original packaging with all accessories and documentation. Products must not show signs of wear, damage, or alteration. Proof of purchase is required. Non-returnable items include digital goods, perishable items, personalized items, gift cards, and clearance or final sale items.
 
-The item must be in its original packaging, including all accessories, manuals, and documentation.
+Return Categories:
+Electronics:
+Electronics must be returned within 30 days. Items must be in original retail packaging with all cables, chargers, manuals, and accessories. Devices must not be registered, paired, or linked to any account. No physical damage, modifications, or liquid exposure. Items with removed serial numbers or tampered security seals cannot be returned. Open batteries and modified software items are not eligible. Factory reset is required when applicable. A restocking fee of up to 15% may apply if the item is not in like-new condition.
 
-The product must not show signs of wear, damage, or alteration.
+Apparel and Wearables:
+Clothing and accessories must be unworn, unwashed, and free of stains, odors, or pet hair. All original tags must be attached. Footwear must be returned in the original shoe box, placed inside a shipping box. Undergarments, swimwear, or intimate wear that has been opened cannot be returned.
 
-Proof of purchase (order number or receipt) is required.
+Footwear:
+Shoes must show no signs of outdoor wear. The shoe box cannot be used as the shipping box.
 
-Certain items are non-returnable, including digital goods, perishable or personalized items, gift cards, and clearance or final sale items.
+Home Goods:
+Includes décor, kitchenware, and small furnishings. Items must be unused and undamaged. Large items must be returned disassembled if originally shipped that way. Transit damage must be reported with photos within 7 days of delivery.
 
-Return Process
-To initiate a return:
+Accessories (Non-Electronics):
+Includes wallets, belts, bags, and tools. Items must be unused and unaltered.
 
-Submit a Request – Log into your account or visit our Returns Center and provide your order number and reason for return.
+Consumables:
+Consumable items such as cleaning products, oils, coatings, or similar items are non-returnable once opened unless defective.
 
-Approval – Our support team will review your request within 2–3 business days. Approved requests will receive a Return Merchandise Authorization (RMA) and a prepaid shipping label (if eligible).
+Bundles and Kits:
+All items in a bundle must be returned together. Individual items from a bundle cannot be returned separately.
 
-Pack Your Item – Securely package your item using the original box if possible, attach the return label, and remove old shipping labels.
+RETURN PROCESS
 
-Ship It Back – Drop off your package at the nearest carrier location within 7 days of RMA approval.
+Submit a Request:
+Use your account or the Returns Center to provide your order number and reason for return.
 
-Return Shipping Costs
+Approval:
+Our team reviews requests within 2–3 business days. Approved requests receive an RMA and, if eligible, a prepaid return label.
 
-Defective or Incorrect Items: We cover all return shipping costs.
+Pack Your Item:
+Package items securely, preferably in original packaging. Remove or cover all old shipping labels.
 
-Customer-Initiated Returns (e.g., changed mind): The customer is responsible for shipping charges.
+Ship It Back:
+Return shipments must be dropped off within 7 days of RMA approval.
 
-Exchanges: We will ship one replacement free of charge per original order.
+RETURN SHIPPING COSTS
 
-Refunds
-Once your return is received and inspected, we will process your refund within 5–10 business days.
-Refunds will be issued to the original payment method used at checkout.
+Defective or incorrect items: We cover all return shipping costs.
 
-Credit/Debit Cards: 5–10 business days for funds to appear
+Customer-initiated returns (changed mind): Customer pays return shipping.
+
+Exchanges: One free replacement shipment per original order.
+
+REFUNDS
+
+Refunds are issued 5–10 business days after the return is received and inspected.
+
+Refund timeline by payment type:
+
+Credit/Debit Cards: 5–10 business days
 
 PayPal or Digital Wallets: 1–3 business days
 
-Store Credit: Instant upon approval
-Deductions: If applicable, shipping fees or restocking charges (up to 15%) may be deducted from the refund total for non-defective items.
+Store Credit: Issued instantly once approved
 
-Damaged, Defective, or Incorrect Items
-If you receive a defective or incorrect product, contact our support team within 7 days of delivery. Include photos of the item and packaging. We will prioritize replacements or full refunds.
+Possible deductions include shipping fees and restocking charges up to 15% for non-defective returns.
 
-Exchanges
-Exchanges are available for the same product (different color or size) depending on stock. To exchange for a different item, place a new order after the refund is processed.
+DAMAGED, DEFECTIVE, OR INCORRECT ITEMS
 
-International Returns
-International customers are responsible for all return shipping fees and any duties or taxes. Refunds are issued in USD and may vary due to exchange rate fluctuations.
+If you receive a defective or incorrect item, contact customer support within 7 days with photos of the product and packaging. We will prioritize replacements or full refunds.
 
-Cancellations
-Orders may be canceled within 2 hours of purchase if not yet shipped. Once shipped, the standard return process applies.
+EXCHANGES
 
-Warranty Policy
-Select products include a 1-year limited warranty against manufacturer defects. Warranty claims require proof of purchase and serial number verification. Normal wear, accidental damage, or misuse are not covered.
+We offer exchanges for the same item in a different color or size if available. For different items, place a new order after your refund is processed.
+
+INTERNATIONAL RETURNS
+
+International customers must pay all return shipping fees, duties, and taxes. Refunds are in USD and may vary due to currency changes.
+
+CANCELLATIONS
+
+Orders may be canceled within 2 hours if they have not yet shipped. Once shipped, the regular return process applies.
+
+WARRANTY POLICY
+
+Some products include a 1-year limited warranty against manufacturer defects. Warranty claims require proof of purchase and serial number verification. Damage from misuse, accidents, or normal wear is not covered.

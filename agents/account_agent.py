@@ -1,6 +1,9 @@
 import db
 import re
 from typing import TypedDict, Optional, List, Dict, Any
+from agents import message_agent as msg
+
+ADDRESS_RE = re.compile(r"\b\d{1,6}\s+[A-Za-z0-9 .'-]+,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\b", re.IGNORECASE,) #US address
 
 class AgentState(TypedDict):
     input: str
@@ -10,6 +13,14 @@ class AgentState(TypedDict):
     tool_calls: List[str]
     tool_results: List[str]
     output: Optional[str]
+
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
+
+    
 
 def account_agent(state: AgentState) -> AgentState:
     """
@@ -43,7 +54,7 @@ def change_password_agent(state: AgentState) -> AgentState:
     """
     print("[AGENT] change_password_agent selected")
     email = (state.get("email") or "").strip().lower()
-    
+
     # GUARD! must have an email (non-guest)
     if not email or email == " ":
         state["output"] = (
@@ -54,7 +65,7 @@ def change_password_agent(state: AgentState) -> AgentState:
     user = db.get_user(email)
     if (not user) or (not (user["password_hash"] or "")):
         state["output"] = (
-            "I can help you set a password. Open Settings → Security, enter a new password, and save."
+            "I can't help you change your password. Please open Settings → Security, enter a new password, and save."
         )
     else:
         state["output"] = (
@@ -64,50 +75,94 @@ def change_password_agent(state: AgentState) -> AgentState:
     return state
 
 def change_address_agent(state: AgentState) -> AgentState:
-    """
-    Handles address change requests.
-    Can parse inline updates or guide to Settings > Profile.
-    """
+
     print("[AGENT] change_address_agent selected")
     text = (state.get("input") or "").strip()
     email = (state.get("email") or "").strip().lower()
-    
-    # GUARD! must have an email (non-guest)
-    if not email or email == " ":
+
+    # Must have an email
+    if not email:
         state["output"] = (
             "You're currently using a guest session. Please log in or sign up to manage your address."
         )
         return state
-    
-    # try to parse address fields from the message
-    updates = _parse_address_updates(text)
+
+    updates: Dict[str, str] = {}
+
+    # --------------------------------------------------
+    # Tries to detect a one-line address in message
+    # --------------------------------------------------
+    address = ADDRESS_RE.search(text)
+    if address:
+        addr = address.group(0)
+        parts = [p.strip() for p in addr.split(",")]
+        if len(parts) == 3:
+            street = parts[0]
+            city = parts[1]
+            state_zip = parts[2].split()
+            state_abbr = state_zip[0].upper() if len(state_zip) > 0 else ""
+            zip_code = state_zip[1] if len(state_zip) > 1 else ""
+        else:
+            street = parts[0]
+            city = parts[1]
+            tail = " ".join(parts[2:])
+            state_zip = tail.split()
+            state_abbr = state_zip[0].upper() if len(state_zip) > 0 else ""
+            zip_code = state_zip[1] if len(state_zip) > 1 else ""
+
+        updates = {
+            "address_line": street,
+            "city": city,
+            "state": state_abbr,
+            "zip_code": zip_code,
+            "country": "USA",
+        }
+
+    # --------------------------------------------------
+    # Applies Updates
+    # --------------------------------------------------
     if updates:
         _apply_address_updates(email, updates)
         user = db.get_user(email)
         pretty = _format_address(user)
         state["output"] = (
-            "Your address has been updated. Current address on file:\n" + pretty
+            "Your address has been updated. Current address on file:\n"
+            f"{pretty}"
         )
         return state
-    
-    # show current address and instructions
+
+    # --------------------------------------------------
+    # No address found
+    # --------------------------------------------------
     user = db.get_user(email)
     pretty = _format_address(user)
+
+    if not re.search(r"\d", text):
+        state["output"] = (
+            "Sure — let's update your address.\n\n"
+            f"Your current address on file is:\n{pretty}\n\n"
+            "Please submit your new address in the following format:\n"
+            "1600 Pennsylvania Ave, Washington, DC 20500"
+        )
+        return state
+
     instructions = (
-        "Sure — you can update your address here by replying in one line, for example:\n"
-        "address line=123 Main St, city=Atlanta, state=GA, zip=30318, country=USA\n\n"
-        "Or open Settings → Profile and edit your Address section there."
+        "I couldn't detect a full address in your last message.\n\n"
+        "To update your address, you can:\n"
+        "Submit your new address in the following format:\n"
+        "1600 Pennsylvania Ave, Washington, DC 20500"
     )
-    state["output"] = (pretty + "\n\n" + instructions).strip()
+    state["output"] = f"{pretty}\n\n{instructions}"
     return state
+
 
 def change_phone_number_agent(state: "AgentState") -> "AgentState":
     """
     Handles phone number change requests.
     Flow: parse -> apply -> read back -> pretty-print.
+
     Accepts:
-      • 'phone=770-888-1234'
-      • 'phone number: (770) 888-1234'
+      • Plain numbers: "770-555-1234", "(770) 555 1234", "+1 (770) 555-1234"
     """
     print("[AGENT] change_phone_number_agent selected")
     text = (state.get("input") or "").strip()
@@ -120,9 +175,16 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
         )
         return state
 
-    # Parse like address → apply → read back → pretty
-    updates = _parse_phone_updates(text)
-    print("[PHONE] parsed updates:", updates)
+    updates: Dict[str, str] = {}
+
+    # --------------------------------------------------
+    # pulls plain number (e.g. "770-555-1234" or "(770) 555 1234")
+    # --------------------------------------------------
+    digits = re.sub(r"\D", "", text)
+    if len(digits) >= 10:
+        # Take last 10 digits to ignore country codes, etc.
+        updates["phone"] = digits[-10:]
+
     if updates:
         try:
             _apply_phone_updates(email, updates)  # uses set_user_phone(...)
@@ -137,17 +199,32 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
         state["output"] = f"Your phone number has been updated. Current phone on file:\n{pretty}"
         return state
 
-    # No updates parsed — show current + instructions
     current = db.get_user_phone_number(email)
     pretty = _pretty_phone_number(current) if current else "(none on file)"
+
+    # If the message has no digits, treat this as an entry request
+    if not re.search(r"\d", text):
+        state["output"] = (
+            "Sure — let's update your phone number.\n\n"
+            f"Your current phone on file is: {pretty}\n\n"
+            "Please reply with your new number in one of these formats:\n"
+            "• 770-555-1234\n"
+            "• (770) 555-1234\n"
+            "You can also open Settings → Profile and edit your Phone Number there."
+        )
+        return state
+
+    # Fallback instructions
     instructions = (
-        "Reply with your new number in one line, for example:\n"
-        "• phone=770-555-1234\n"
-        "• phone number: (770) 555-1234\n"
+        "I couldn't detect a valid phone number in your last message.\n\n"
+        "Please reply with your new number in one of these formats:\n"
+        "• 770-555-1234\n"
+        "• (770) 555-1234\n"
         "You can also open Settings → Profile and edit your Phone Number there."
     )
     state["output"] = f"Current phone on file: {pretty}\n\n{instructions}"
     return state
+
 
 def change_full_name_agent(state: AgentState) -> AgentState:
     """
@@ -161,7 +238,7 @@ def change_full_name_agent(state: AgentState) -> AgentState:
     # GUARD! must have an email (non-guest)
     if not email or email == " ":
         state["output"] = (
-            "You're currently using a guest session. Please log in or sign up to manage your address."
+            "You're currently using a guest session. Please log in or sign up to manage your name."
         )
         return state
     
@@ -181,7 +258,7 @@ def change_full_name_agent(state: AgentState) -> AgentState:
     pretty = _format_full_name(user)
     instructions = (
         "Sure — you can update your full name here by replying in one line, for example:\n"
-        "First=Jane, Last=Doe\n\n"
+        "first=Jane, last=Doe\n\n"
         "Or open Settings → Profile and edit your full name section there."
     )
     state["output"] = (pretty + "\n\n" + instructions).strip()
@@ -217,35 +294,6 @@ _ADDR_KEYS = {
 #     "cell phone": "phone",
 #     "cellphone": "phone",
 # }
-
-
-def _parse_address_updates(text: str) -> Dict[str, str]:
-    """
-    Parse address updates from free-form text.
-    Accepts patterns like: key=value or key: value
-    Example: "address line=123 Main St, city=Atlanta, state=GA, zip=30318, country=USA"
-    """
-    if not text:
-        return {}
-    lowered = text.lower()
-    # if none of the address are present, skip parsing
-    if not any(k in lowered for k in _ADDR_KEYS.keys()):
-        return {}
-
-    # accept patterns "key=value" or "key: value" with optional commas
-    pattern = re.compile(r"\b([a-z_ ]{3,12})\s*[:=]\s*([^,\n]+)")
-    found = pattern.findall(text)
-    updates: Dict[str, str] = {}
-    for raw_key, raw_val in found:
-        key = raw_key.strip().lower()
-        norm = _ADDR_KEYS.get(key)
-        if not norm:
-            continue
-        val = raw_val.strip()
-        # collapse whitespace
-        val = re.sub(r"\s+", " ", val)
-        updates[norm] = val
-    return updates
 
 def _apply_address_updates(email: str, updates: Dict[str, str]) -> None:
     """Apply address field updates to the user's record."""
@@ -427,22 +475,6 @@ def _format_full_name(user_row) -> str:
     if not non_empty:
         return "You don't have your name on file yet."
     return " ".join(non_empty)  # Use space instead of comma for names
-
-
-
-
-def _row_get(row, key: str, default: str = "") -> str:
-    """Get a field from dict/sqlite3.Row/object and return as string."""
-    if row is None:
-        return default
-    try:
-        if isinstance(row, dict):
-            return _safe_str(row.get(key, default))
-        if hasattr(row, "keys") and key in row.keys():
-            return _safe_str(row[key])
-        return _safe_str(getattr(row, key, default))
-    except Exception:
-        return default
 
 def _safe_str(x: Any) -> str:
     if x is None:

@@ -9,6 +9,8 @@ import base64
 from pathlib import Path
 from datetime import datetime
 from agents.general_agent import summarize_conversation
+from agents import message_agent as msg
+
 
 
 # --- Session setup ---
@@ -538,6 +540,8 @@ if st.session_state.get("page") == "settings" and st.session_state.get("user_ema
 
         if update_clicked:
             try:
+                email = st.session_state.user_email
+
                 db.set_user_first_name(st.session_state.user_email, first)
                 db.set_user_last_name(st.session_state.user_email, last)
                 db.set_user_phone(st.session_state.user_email, phone)
@@ -546,9 +550,17 @@ if st.session_state.get("page") == "settings" and st.session_state.get("user_ema
                 db.set_user_state(st.session_state.user_email, state)
                 db.set_user_country(st.session_state.user_email, country)
                 db.set_user_zip_code(st.session_state.user_email, zip_code)
+                #email user about profile update
+                msg.message_agent({
+                    "email": email,
+                    "name": db.get_user_first_name(email) or "",
+                    "event_type": "account_changed",
+                })
                 st.success("Profile updated")
                 # keep user on the Settings page; just refresh display name in session
                 st.session_state.user_name = first or st.session_state.user_name
+
+
             except Exception as e:
                 st.error(f"Error updating account: {e}")
 
