@@ -47,7 +47,7 @@ INTENT_KEYWORDS = {
     "check order": ["order", "orders", "check order", "my order", "track order"],
     "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
     "billing": ["billing", "payment", "charge", "invoice"],
-
+    "check payment": ["payment status", "check payment", "payment"],
     "change address": ["change address", "update address", "new address"],
     "change phone number": ["change phone number", "update phone number", "new phone number", "phone="],
     "change full name": ["change full name", "update full name", "change name", "update name", "first=", "last="],
@@ -84,7 +84,9 @@ def supervisor(state: AgentState):
         try:
             resp = model.invoke(
                 "Classify the user's intent as one of: "
-                "['check order','shipping status','billing','change password','change address',"
+                "['check order','shipping status','check payment','billing','change password','change address',"
+                "'change phone number','refund','live agent','memory','other'].\n"
+                "['check order','shipping status','check payment','billing','change password','change address',"
                 "'change phone number','change full name','refund','live agent','memory','policy','other'].\n"
                 f"User: {text}\nReturn just the label."
             )
@@ -94,6 +96,9 @@ def supervisor(state: AgentState):
                 "check order": "check order",
                 "shipping status": "shipping status",
                 "billing": "billing",
+                "check payment": "check payment",
+                "forgot password": "forgot password",
+                "change password": "change password", #changed to change password
                 "change password": "change password",
                 "change address": "change address",
                 "change phone number": "change phone number",
@@ -208,7 +213,11 @@ graph.add_conditional_edges(
     {
         "check order": "order_agent",
         "shipping status": "shipping_agent",
+
         "billing": "billing_agent",
+        "check payment": "billing_agent",
+        "forgot password": "account_agent",
+        "account": "account_agent",
 
         "change address": "account_agent",
         "change phone number": "account_agent",
@@ -264,3 +273,31 @@ def ask_agent_events(query: str, thread_id: str = "default", email: str | None =
             yield ("routing", s["routing_msg"])
         if s.get("output"):
             yield ("output", s["output"])
+
+#this is to detect keywords when users type-in the input
+INTENT_KEYWORDS = {
+    "check order": ["order", "orders", "check order", "my order", "track order"],
+    "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
+    "billing": ["billing", "charge", "invoice"],
+    "check payment": ["payment status", "check payment", "payment"],
+    "change address": ["change address", "update address", "new address"],
+    "change phone number": ["change phone number", "update phone number", "new phone number", "update my phone", "i want to change my phone number", "phone="],
+    "change full name": ["change full name", "update full name", "change name", "update name", "edit name", "new name", "change my name", "update my name", "update my full name", "first=", "last="],
+    "change email": ["change email", "update email", "new email"],
+    "change password": ["change password", "reset password", "update password", "forgot password", "forgot my password", "lost password"],
+    "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
+    "refund": ["refund", "return", "money back"],
+    "message agent": ["message agent", "notify user", "email user", "send confirmation", "send me an email"],
+    "email agent": ["email agent", "send email", "message"],
+    "live agent": ["live agent", "human agent", "chat with agent"],
+    "memory": ["history", "memory", "chat history"],
+    
+}
+
+def detect_intent(user_input: Optional[str]):
+    """Match user input against keywords to detect intent."""
+    text = (user_input or "").lower()
+    for intent, keywords in INTENT_KEYWORDS.items():
+        if any(keyword in text for keyword in keywords):
+            return intent
+    return None
