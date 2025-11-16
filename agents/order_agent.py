@@ -60,7 +60,7 @@ class Orders(BaseModel):
 
 
 # Pydantic  models for data extraction using Gemini LLM
-
+# extract order details from user input using Gemini LLM when order is placed and auto send order confirmation email
 
 def orders(orders: str) -> List[Order]:
     """
@@ -89,7 +89,7 @@ def orders(orders: str) -> List[Order]:
         print(f"[GEMINI ERROR] {e}")
         return []
 
-# send order confimation email to user using sendgrid
+# send order confimation email to user using sendgrid after extracting order details
 
 
 def send_order_confirmation_email(to_email: str, orders: List[Order]) -> None:
@@ -124,6 +124,26 @@ def send_order_confirmation_email(to_email: str, orders: List[Order]) -> None:
     except Exception as e:
         print(f"Failed to send email: {e}")
 
+# orders summary generation using Gemini LLM when check order event is triggered by user
+
+
+def generate_order_summary(orders: List[Order]) -> str:
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    order_list_text = "\n".join(
+        [f"- {o.product} (x{o.qty}), ${o.price:.2f}, status: {o.status}" for o in orders])
+    summary_prompt = f"""
+    Generate a friendly summary of the following orders, suitable for displaying to the user:
+
+    {order_list_text}
+    """
+    try:
+        response = model.generate_content(summary_prompt)
+        summary_text = response.text.strip()
+    except Exception as e:
+        print(f"[GEMINI ERROR] {e}")
+        summary_text = "Here are your recent orders:\n" + order_list_text
+
+    return f"{summary_text}"
 # --- LangGraph Logging ---
 
 
@@ -146,7 +166,6 @@ def order_agent(state: AgentState) -> AgentState:
     print("[AGENT] order_agent selected")
     user = db.get_user(state.get("input") or "")
     user = db.get_user(state.get("email") or "")
-    user = db.get_user(state.get("output") or "")
 
     if user:
         # Adjust columns to match your db schema
@@ -183,8 +202,15 @@ def order_agent(state: AgentState) -> AgentState:
         orders=[Order(**o) for o in orders(state.get("input") or "")]
     )
 
-# --notify user email sent--
-    state["output"] += "\n\nA confirmation email has been sent to your email address."
+# --notify user order confirmation email sent--
+    state["output"] += "\n\nOrder confirmated and confirmation email has been sent to your email address."
+
+# ---generate order summary---
+    orders_list = [Order(**o) for o in orders(state.get("input") or "")]
+    state["output"] += "\n\n" + generate_order_summary(orders_list)
+
+# log order processing events to database via supervisor agent
+    log_orders(email=state.get("email") or "", orders=orders_list)
 
     return state
 
