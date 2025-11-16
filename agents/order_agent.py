@@ -146,6 +146,8 @@ def order_agent(state: AgentState) -> AgentState:
     print("[AGENT] order_agent selected")
     user = db.get_user(state.get("input") or "")
     user = db.get_user(state.get("email") or "")
+    user = db.get_user(state.get("output") or "")
+
     if user:
         # Adjust columns to match your db schema
         # For example, orders may be stored as JSON in a specific column
@@ -172,8 +174,8 @@ def order_agent(state: AgentState) -> AgentState:
                 "\n".join(lines)
         else:
             state["output"] = "No orders found."
-    # else:
-        # state["output"] = "Please provide your email to look up your orders."
+       # else:
+       #  state["output"] = "Please provide your email to look up your orders."
 
 # ---send order confirmation email---
     send_order_confirmation_email(
@@ -198,7 +200,7 @@ def run_order_agent(state: AgentState) -> AgentState:
         state.setdefault("tool_calls", [])
         state.setdefault("tool_results", [])
         state["tool_results"].append(f"[FATAL] {e!r}")
-        # state["output"] = "Sorry—something went wrong while checking your orders."
+        state["output"] = "Sorry—something went wrong while checking your orders."
         return state
 
 
@@ -221,6 +223,6 @@ input = """
     """
 # run order agent
 initial_state = {"input": input, "email": "bob.smith69844@gmail.com",
-                 "orders": orders(input), "tool_calls": ["email"], "tool_results": [], "output": None}
+                 "tool_calls": [], "tool_results": [], "output": None}
 final_state = run_order_agent(initial_state)
 print(final_state["output"])
