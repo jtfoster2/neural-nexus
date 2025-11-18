@@ -65,6 +65,21 @@ Then open the link in your browser (default: [http://localhost:8501](http://loca
    SENDGRID_API_KEY="your_api_key_here"
    ```
 
+5. ## Order Agent Setup
+
+1. Install the Google GenAI Python SDK
+
+2. Config google-genai
+
+3. Define a pydantic model for Order AND Orders that you want to extract.
+
+4. Google Gemini GENAI for extraction + the JSON schema
+
+5. SendGrid email client
+
+6. LangGraph workflow using typed state
+
+
 ## 🧩 Project Structure
 
 ```
