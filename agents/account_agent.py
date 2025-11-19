@@ -24,7 +24,7 @@ class AgentState(TypedDict):
 
 def account_agent(state: AgentState) -> AgentState:
     """
-    Router for account-related intents.
+    Router for account-related intents.message_agent(state: AgentState) -> AgentState:
     Delegates to specialized functions based on intent.
     """
     print("[AGENT] account_agent selected")
@@ -141,7 +141,7 @@ def change_address_agent(state: AgentState) -> AgentState:
         state["output"] = (
             "Sure — let's update your address.\n\n"
             f"Your current address on file is:\n{pretty}\n\n"
-            "Please submit your new address in the following format:\n"
+            "Submit your new address in the following format:\n"
             "1600 Pennsylvania Ave, Washington, DC 20500"
         )
         return state
