@@ -1,15 +1,11 @@
 import json
 import db
-from typing import TypedDict, Optional, List
-from dotenv import load_dotenv
-from datetime import datetime
-from message_agent import send_email
+from typing import TypedDict, Optional, List, Dict, Any
+from agents import message_agent as msg
 
 
 # Initialize database connection
 db.init_db()
-# load environment variables from .env file
-load_dotenv()
 
 
 class AgentState(TypedDict):
@@ -21,12 +17,19 @@ class AgentState(TypedDict):
     tool_results: List[str]
     output: Optional[str]
 
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
+
 
 def order_agent(state: AgentState) -> AgentState:
     print("[AGENT] order_agent selected")
-    user = db.get_user(state.get("email") or "")
-    user = db.get_user(state.get("input") or "")
-
+    user = db.get_user(state.get("email") or "").strip().lower()
+    if not user:
+        user = db.get_user(state.get("input") or "").strip().lower()
+# Fetch orders for the user
     if user:
         # Adjust columns to match your db schema
         # For example, orders may be stored as JSON in a specific column
@@ -57,7 +60,7 @@ def order_agent(state: AgentState) -> AgentState:
 
             try:
                 # Call the send_email function to send the confirmation
-                send_email(user, email_subject, email_body)
+                msg.message_agent(user, email_subject, email_body)
                 email_status = f"Order summary successfully sent to {user}."
             except Exception as e:
                 email_status = f"Failed to send email confirmation: {e}"
