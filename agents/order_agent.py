@@ -26,6 +26,8 @@ class AgentState(TypedDict):
 def order_agent(state: AgentState) -> AgentState:
     print("[AGENT] order_agent selected")
     user = db.get_user(state.get("email") or "")
+    user = db.get_user(state.get("input") or "")
+
     if user:
         # Adjust columns to match your db schema
         # For example, orders may be stored as JSON in a specific column
@@ -48,6 +50,23 @@ def order_agent(state: AgentState) -> AgentState:
                 f"Card Ending: {o.get('card_last4', 'N/A')}"
                 for o in data
             ]
+            # --- Email Confirmation Logic ---
+            email_body = "Thank you for shopping with us! Here is a summary of your recent orders:\n\n" + \
+                         "\n".join(lines) + \
+                         "\n\nIf you have any questions, please reply to this email."
+            email_subject = "Your Order Details and Confirmation"
+
+            try:
+                # Call the send_email function to send the confirmation
+                send_email(user, email_subject, email_body)
+                email_status = f"Order summary successfully sent to {user}."
+            except Exception as e:
+                email_status = f"Failed to send email confirmation: {e}"
+
+            # Update the agent's output with the details and the email status
+            state["output"] = f"Here are your order details:\n{'-'*30}\n" + \
+                "\n".join(lines) + \
+                f"\n\n{email_status}"
             state["output"] = "Here are your order details:\n" + \
                 "\n".join(lines)
         else:
