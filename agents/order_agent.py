@@ -1,7 +1,6 @@
 import json
 import db
 from typing import TypedDict, Optional, List
-import db
 from dotenv import load_dotenv
 from datetime import datetime
 from message_agent import send_email
