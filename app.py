@@ -37,224 +37,164 @@ if "page" not in st.session_state:
     st.session_state.page = "chat"
 
 
-# CSS for signup/login
-st.markdown("""
-<style>
-    /* Auth header styling */
-    .auth-header {
-        text-align: center;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .auth-header img {
-        margin-top: 1 rem    
-        margin-bottom: 1rem;
-    }
-    .auth-title {
-        color: #2c3e50;
-        font-size: 1.75rem;
-        font-weight: 600;
-        margin: 0.5rem 0;
-    }
-    
-    /* Card styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
-        background-color: #f1f3f4;
-        padding: 10px 10px 0 10px;
-        border-radius: 10px 10px 0 0;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: #ffffff;
-        border-radius: 5px 5px 0 0;
-        gap: 2px;
-        padding: 10px 20px;
-        font-weight: 500;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #ffffff;
-        /* border-bottom: 3px solid #007bff; */
-    }
-    
-    /* Form styling */
-    .stTextInput > div > div > input {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        padding: 15px;
-        border-radius: 8px;
-    }
-    .stTextInput > div > div > input:focus {
-        /* border-color: #007bff; */
-        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
-    }
-    
-    /* Button styling */
-    .stButton > button {    
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    /* .secondary-button > button {
-        background-color: #f8f9fa;
-        color: #6c757d;
-    }
-    .secondary-button > button:hover {
-        background-color: #e9ecef;
-        border-color: #dee2e6;
-    } */
-            
-    
-    /* Container styling */
-    .auth-container {
-        background-color: white;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-        margin-top: 20px;
-    }
-    
-    /* Heading styles */
-    h1, h2, h3, h4, h5, h6 {
-        color: #2c3e50;
-        font-weight: 600;
-    }
-    
-    /* Alert/Info styling */
-    .stAlert {
-        border-radius: 8px;
-        padding: 15px;
-    }
-    
-    /* Success message styling */
-    .success-message {
-        color: #28a745;
-        padding: 10px;
-        background-color: #d4edda;
-        border-radius: 8px;
-        margin: 10px 0;
-    }
-    
-    /* Error message styling */
-    .error-message {
-        color: #dc3545;
-        padding: 10px;
-        background-color: #f8d7da;
-        border-radius: 8px;
-        margin: 10px 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # --- Email prompt; Authentication (before sidebar and chat) ---
 if not st.session_state.user_email:
     
-    # embed Capgemini image as base64 to center it
+    # --- Modern Landing Page ---
+    # Load logo before rendering container to prevent empty container flash
     logo_file = Path("Capgemini.png")
     if not logo_file.exists():
         st.error("Capgemini.png not found in working directory.")
+        b64 = ""
     else:
         b64 = base64.b64encode(logo_file.read_bytes()).decode()
-        html = f"""
-        <div style="text-align:center; margin-bottom: 1rem;">
-        <img src="data:image/png;base64,{b64}" width="280" style="display:block; margin:0 auto;">
-        <h2 style="color:#2c3e50; font-weight:600; margin-top:8px;">AI Customer Support</h2>
-        </div>
-        """
-        st.markdown(html, unsafe_allow_html=True)
-    # end the block of embed img as base64
-    ############################################# 
-
-
-    login_tab, signup_tab, guest_tab = st.tabs(["Login", "Sign up", "Continue as Guest"])
-
-    with login_tab:
-        # Initialize show_reset_form in session state if not exists
-        if "show_reset_form" not in st.session_state:
-            st.session_state.show_reset_form = False
-            
-        if not st.session_state.show_reset_form:
-
-            # Login Form
-            style='background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1);'
-            st.markdown("""
-                <div>
-                    <h3 style='color: #2c3e50; margin-bottom: 10px; font-weight: 600;'>Welcome Back!</h3>
+    # Only render container after logo is loaded
+    if b64 or not logo_file.exists():
+        with st.container(border=True):
+            st.markdown(f"""
+            <div style='max-width: 500px; width: 100%; margin: 0 auto;'>
+                <div style='background: #fff; border-radius: 12px; padding: 0; display: flex; justify-content: center; align-items: center; margin-bottom: 24px;'>
+                    <img src='data:image/png;base64,{b64}' width='240' style='display:block; border-radius: 12px; background: #fff;'>
                 </div>
+                <h3 style='color:#007bff; font-size:1.25rem; font-weight:500; text-align:center; margin-bottom:24px;'>AI Customer Support for Modern Businesses</h3>
+                <p style='color:#495057; font-size:1.1rem; text-align:center; margin-bottom:32px;'>Delivering instant, reliable, and friendly support for your customers. Try our intelligent chat, seamless account management, and more.</p>
+            </div>
             """, unsafe_allow_html=True)
-            
-            with st.container():
-                st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
-                with st.form("login_form"):
-                    login_email = st.text_input("Email or Phone Number", key="login_email", placeholder="Enter your email or phone number")
-                    login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
-
-                    # Login btn
-                    if st.form_submit_button("Login", use_container_width=True):
-                        if not login_email or not login_password:
-                            st.error("Please enter both email/phone and password.")
-                        else:
-                            success, message, user_email = auth.login(login_email.strip(), login_password)
-                            if success:
-                                st.session_state.user_email = user_email
-                                st.session_state.user_name = auth.get_user_display_name(user_email)
-                                st.session_state.chat_started = True
-                                st.success(f"Welcome back, {st.session_state.user_name}!")
-                                st.rerun()
-                            else:
-                                st.error(message)
-        
-            # Forgot password button
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                pass
-
+            col1, col2, col3 = st.columns([1,2,1])
             with col2:
+                login_clicked = st.button("Login", use_container_width=True, key="welcome_login")
+                signup_clicked = st.button("Sign up", use_container_width=True, key="welcome_signup")
+                guest_clicked = st.button("Continue as Guest", use_container_width=True, key="welcome_guest")
+            st.markdown("<div style='text-align:center; color:#6c757d; font-size:0.95rem; margin-bottom:0;'>No account needed to try our services!</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; color:#adb5bd; font-size:0.75rem; margin-top:18px; margin-bottom:3px;'>Designed by Neural Nexus</div>", unsafe_allow_html=True)
 
-                if st.button("Forgot password?", type="tertiary", use_container_width=False):
-                    st.session_state.show_reset_form = True
-                    st.rerun()
-
-                st.markdown("<br>", unsafe_allow_html=True)
-
-        else:
-            # Reset Password Form
-            st.markdown("""
-                <div style='background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1);'>
-                    <h3 style='color: #2c3e50; margin-bottom: 20px; font-weight: 600;'>Reset Password</h3>
+    # --- Login Dialog ---
+    if login_clicked:
+        @st.dialog("Login")
+        def login_dialog():
+            st.markdown(f"""
+            <div style='max-width: 400px; width: 100%; margin: 0 auto;'>
+                <div style='background: #fff; border-radius: 12px; padding: 8px; display: flex; justify-content: center; align-items: center; margin-bottom: 12px;'>
+                    <img src='data:image/png;base64,{b64}' width='180' style='display:block; border-radius: 12px; background: #fff;'>
                 </div>
+                <h3 style='color: #2c3e50; margin-bottom: 8px; font-weight: 600; text-align:center;'>Welcome Back!</h3>
+                <p style='color: #6c757d; text-align:center;'>Sign in to your account</p>
+            </div>
             """, unsafe_allow_html=True)
-            
-            with st.container():
-                st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
-                with st.form("reset_password_form"):
-                    fp_email = st.text_input("Account Email", key="fp_email", placeholder="Enter your account email")
-                    fp_new = st.text_input("New Password", type="password", key="fp_new", placeholder="Enter new password")
-                    fp_confirm = st.text_input("Confirm Password", type="password", key="fp_confirm", placeholder="Confirm new password")
-                    
-                    st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
-                    
-                    col1, col2, col3 = st.columns([1, 2, 1])
-                    with col2:
-                        primary_submit = st.form_submit_button("Reset Password", use_container_width=True)
+            with st.form("login_form"):
+                login_email = st.text_input("Email or Phone Number", key="login_email", placeholder="Enter your email or phone number")
+                login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
+                if st.form_submit_button("Login", use_container_width=True):
+                    if not login_email or not login_password:
+                        st.error("Please enter both email/phone and password.")
+                    else:
+                        success, message, user_email = auth.login(login_email.strip(), login_password)
+                        if success:
+                            st.session_state.user_email = user_email
+                            st.session_state.user_name = auth.get_user_display_name(user_email)
+                            st.session_state.chat_started = True
+                            st.success(f"Welcome back, {st.session_state.user_name}!")
+                            st.rerun()
+                        else:
+                            st.error(message)
+            st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+            if st.button("Forgot password?", type="tertiary", use_container_width=True, key="login_forgot_password_dialog"):
+                st.session_state.show_reset_form = True
+                st.rerun()
+        login_dialog()
 
-                    with col2:
-                        st.markdown("""
-                            <div class="secondary-button">
-                        """, unsafe_allow_html=True)
-                        secondary_submit = st.form_submit_button("Back to Login", use_container_width=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                        
-                    if primary_submit:
+    # --- Signup Dialog ---
+    if signup_clicked:
+        @st.dialog("Sign up")
+        def signup_dialog():
+            st.markdown(f"""
+            <div style='max-width: 400px; width: 100%; margin: 0 auto;'>
+                <div style='background: #fff; border-radius: 12px; padding: 8px; display: flex; justify-content: center; align-items: center; margin-bottom: 12px;'>
+                    <img src='data:image/png;base64,{b64}' width='180' style='display:block; border-radius: 12px; background: #fff;'>
+                </div>
+                <h3 style='color: #2c3e50; margin-bottom: 8px; font-weight: 600; text-align:center;'>Create an Account</h3>
+                <p style='color: #6c757d; text-align:center;'>Join CapeGemini AI Customer Service today</p>
+            </div>
+            """, unsafe_allow_html=True)
+            with st.container(border=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    su_first = st.text_input("First name", key="su_first", placeholder="Enter your first name")
+                with col2:
+                    su_last = st.text_input("Last name", key="su_last", placeholder="Enter your last name")
+                su_email = st.text_input("Email", key="su_email", placeholder="Enter your email address")
+                su_phone = st.text_input("Phone (optional)", key="su_phone", placeholder="e.g., +15555550123")
+                col3, col4 = st.columns(2)
+                with col3:
+                    su_password = st.text_input("Password", type="password", key="su_password", placeholder="Create a password")
+                with col4:
+                    su_confirm = st.text_input("Confirm password", type="password", key="su_confirm", placeholder="Confirm your password")
+                st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+                if st.button("Create Account", use_container_width=True, key="signup_create_account_dialog"):
+                    if not su_email or not su_password:
+                        st.error("Please provide both email and password to create an account.")
+                    elif su_password != su_confirm:
+                        st.error("Passwords do not match.")
+                    else:
+                        success, message = auth.signup(
+                            su_email.strip().lower(),
+                            su_password,
+                            su_first or None,
+                            su_last or None,
+                            (su_phone.strip() if su_phone and su_phone.strip() else None)
+                        )
+                        if success:
+                            st.session_state.user_email = su_email.strip().lower()
+                            st.session_state.user_name = auth.get_user_display_name(su_email.strip().lower())
+                            st.session_state.chat_started = True
+                            st.success("Account created and logged in.")
+                            st.rerun()
+                        else:
+                            st.error(message)
+        signup_dialog()
+
+    # --- Guest Dialog ---
+    if guest_clicked:
+        @st.dialog("Continue as Guest")
+        def guest_dialog():
+            st.markdown(f"""
+            <div style='max-width: 400px; width: 100%; margin: 0 auto;'>
+                <div style='background: #fff; border-radius: 12px; padding: 8px; display: flex; justify-content: center; align-items: center; margin-bottom: 12px;'>
+                    <img src='data:image/png;base64,{b64}' width='180' style='display:block; border-radius: 12px; background: #fff;'>
+                </div>
+                <h3 style='color: #2c3e50; margin-bottom: 8px; font-weight: 600; text-align:center;'>Continue as Guest</h3>
+                <p style='color: #6c757d; text-align:center;'>Try our services without creating an account</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Start as Guest", use_container_width=True, key="guest_start_dialog"):
+                st.session_state.chat_started = True
+                st.session_state.user_name = "Guest"
+                st.session_state.user_email = " "
+                st.success(f"Welcome, {st.session_state.user_name}!")
+                st.rerun()
+        guest_dialog()
+
+    # --- Reset Password Dialog ---
+    if st.session_state.get("show_reset_form"):
+        @st.dialog("Reset Password")
+        def reset_password_dialog():
+            st.markdown(f"""
+            <div style='max-width: 400px; width: 100%; margin: 0 auto;'>
+                <div style='background: #fff; border-radius: 12px; padding: 8px; display: flex; justify-content: center; align-items: center; margin-bottom: 12px;'>
+                    <img src='data:image/png;base64,{b64}' width='180' style='display:block; border-radius: 12px; background: #fff;'>
+                </div>
+                <h3 style='color: #2c3e50; margin-bottom: 8px; font-weight: 600; text-align:center;'>Reset Password</h3>
+                <p style='color: #6c757d; text-align:center;'>Enter your details to reset your password</p>
+            </div>
+            """, unsafe_allow_html=True)
+            with st.form("reset_password_form_dialog"):
+                fp_email = st.text_input("Account Email", key="fp_email", placeholder="Enter your account email")
+                fp_new = st.text_input("New Password", type="password", key="fp_new", placeholder="Enter new password")
+                fp_confirm = st.text_input("Confirm Password", type="password", key="fp_confirm", placeholder="Confirm new password")
+                st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.form_submit_button("Reset Password", use_container_width=True):
                         if not fp_email or not fp_new:
                             st.error("Please provide your email and new password.")
                         elif fp_new != fp_confirm:
@@ -263,80 +203,15 @@ if not st.session_state.user_email:
                             ok, msg = auth.reset_password(fp_email.strip().lower(), fp_new)
                             if ok:
                                 st.success(msg)
-                                # Reset the form visibility and return to login
                                 st.session_state.show_reset_form = False
                                 st.rerun()
                             else:
                                 st.error(msg)
-                    
-                    if secondary_submit:
+                with col2:
+                    if st.form_submit_button("Back to Login", use_container_width=True):
                         st.session_state.show_reset_form = False
                         st.rerun()
-
-    with signup_tab:
-        st.markdown("""
-            <div style='background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1);'>
-                <h3 style='color: #2c3e50; margin-bottom: 20px; font-weight: 600;'>Create an Account</h3>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            su_first = st.text_input("First name", key="su_first", placeholder="Enter your first name")
-        with col2:
-            su_last = st.text_input("Last name", key="su_last", placeholder="Enter your last name")
-            
-        su_email = st.text_input("Email", key="su_email", placeholder="Enter your email address")
-        su_phone = st.text_input("Phone (optional)", key="su_phone", placeholder="e.g., +15555550123")
-        
-        # Password fields
-        col3, col4 = st.columns(2)
-        with col3:
-            su_password = st.text_input("Password", type="password", key="su_password", placeholder="Create a password")
-        with col4:
-            su_confirm = st.text_input("Confirm password", type="password", key="su_confirm", placeholder="Confirm your password")
-        
-        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
-        if st.button("Create Account", use_container_width=True):
-            if not su_email or not su_password:
-                st.error("Please provide both email and password to create an account.")
-            elif su_password != su_confirm:
-                st.error("Passwords do not match.")
-            else:
-                success, message = auth.signup(
-                    su_email.strip().lower(),
-                    su_password,
-                    su_first or None,
-                    su_last or None,
-                    (su_phone.strip() if su_phone and su_phone.strip() else None)
-                )
-                if success:
-                    st.session_state.user_email = su_email.strip().lower()
-                    st.session_state.user_name = auth.get_user_display_name(su_email.strip().lower())
-                    st.session_state.chat_started = True
-                    st.success("Account created and logged in.")
-                    st.rerun()
-                else:
-                    st.error(message)
-
-    with guest_tab:
-        st.markdown("""
-            <div style='background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1);'>
-                <h3 style='color: #2c3e50; margin-bottom: 20px; font-weight: 600;'>Continue as Guest</h3>
-                <p style='color: #6c757d; margin-bottom: 20px;'>You can try our services without creating an account.</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
-        
-        if st.button("Start as Guest", use_container_width=True):
-            st.session_state.chat_started = True
-            st.session_state.user_name = "Guest"
-            st.session_state.user_email = " "
-            st.success(f"Welcome, {st.session_state.user_name}!")
-            st.rerun()
+        reset_password_dialog()
 
     # don't show anything else until authenticated
     st.stop()
@@ -643,6 +518,52 @@ if st.session_state.get("page") == "settings" and st.session_state.get("user_ema
 
 
 # --- Conversation ID ---
+def offer_feedback(msg):
+    col = st.columns([4,1,1,4])
+    with col[1]:
+        up = st.button("👍", key=f"feedback_up_{id(msg)}_{len(st.session_state.messages)}", help="Helpful", use_container_width=False)
+    with col[2]:
+        down = st.button("👎", key=f"feedback_down_{id(msg)}_{len(st.session_state.messages)}", help="Not Helpful", use_container_width=False)
+        # Style: no visible button styling, only emoji are visible and clickable
+        st.markdown(f"""
+            <style>
+            button[data-feedback='{id(msg)}_{len(st.session_state.messages)}'] {{
+                background: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                min-width: 0 !important;
+                outline: none !important;
+            }}
+            button[data-feedback='{id(msg)}_{len(st.session_state.messages)}'] span {{
+                background: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                font-size: 1.1rem;
+                transition: none;
+            }}
+            button[data-feedback='{id(msg)}_{len(st.session_state.messages)}']:hover span {{
+                text-shadow: 0 0 4px #2222;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
+    if up:
+        db.add_feedback(
+            email=st.session_state.user_email,
+            conversation_id=st.session_state.conversation_id,
+            message=msg["content"],
+            feedback_type="up"
+        )
+        st.success("Thank you for your feedback!")
+    if down:
+        db.add_feedback(
+            email=st.session_state.user_email,
+            conversation_id=st.session_state.conversation_id,
+            message=msg["content"],
+            feedback_type="down"
+        )
+        st.success("Thank you for your feedback!")
 if st.session_state.user_email:
     #st.caption(f"Session ID: `{st.session_state.conversation_id}`") #DEBUGGING
     st.write(f"User: `{st.session_state.user_email}`")
@@ -664,6 +585,51 @@ for msg in st.session_state.messages:
     if role not in {"user", "assistant"}:
         role = "assistant"
     st.chat_message(role).write(msg["content"])
+    # Show tiny thumbs feedback only for assistant messages after the most recent user message
+    idx = st.session_state.messages.index(msg)
+    # Find the last user message
+    last_user_idx = None
+    for i in range(len(st.session_state.messages)-1, -1, -1):
+        if (st.session_state.messages[i].get("role") or "assistant").lower() == "user":
+            last_user_idx = i
+            break
+    # Show thumbs for the first actionable assistant message after a user message
+    if last_user_idx is not None:
+        # Find the first actionable assistant message after last user message
+        found = False
+        for j in range(last_user_idx + 1, len(st.session_state.messages)):
+            m = st.session_state.messages[j]
+            r = (m.get("role") or "assistant").lower()
+            content = (m.get("content") or "").lower()
+            is_actionable = not ("routing to" in content or "routing..." in content or "route to" in content or "transferring" in content)
+            if r == "assistant" and is_actionable:
+                if msg == m:
+                    offer_feedback(msg)
+                found = True
+                break
+
+# --- Feedback helper function ---
+def offer_feedback(msg):
+    col = st.columns([3,2,3])
+    with col[1]:
+        up = st.button("👍", key=f"feedback_up_{id(msg)}_{len(st.session_state.messages)}", help="Helpful", use_container_width=True)
+        down = st.button("👎", key=f"feedback_down_{id(msg)}_{len(st.session_state.messages)}", help="Not Helpful", use_container_width=True)
+        if up:
+            db.add_feedback(
+                email=st.session_state.user_email,
+                conversation_id=st.session_state.conversation_id,
+                message=msg["content"],
+                feedback_type="up"
+            )
+            st.success("Thank you for your feedback!")
+        if down:
+            db.add_feedback(
+                email=st.session_state.user_email,
+                conversation_id=st.session_state.conversation_id,
+                message=msg["content"],
+                feedback_type="down"
+            )
+            st.success("Thank you for your feedback!")
         
 
 def send_message_to_agent(prompt: str):
@@ -766,36 +732,36 @@ if st.session_state.user_email:
     def handle_option_button(option):
         handle_option(option)
     with col1:
-        if st.button("Change Name", use_container_width=True):
+        if st.button("Change Name", use_container_width=True, key="chat_change_name"):
             st.session_state.pending_prompt = "Change Name"
             st.rerun()
     with col2:
-        if st.button("Change Phone", use_container_width=True):
+        if st.button("Change Phone", use_container_width=True, key="chat_change_phone"):
             st.session_state.pending_prompt = "Change Phone Number"
             st.rerun()
     with col3:
-        if st.button("Change Address", use_container_width=True):
+        if st.button("Change Address", use_container_width=True, key="chat_change_address"):
             st.session_state.pending_prompt = "Change Address"
             st.rerun()
     with col4:
-        if st.button("Live Agent", use_container_width=True):
+        if st.button("Live Agent", use_container_width=True, key="chat_live_agent"):
             st.session_state.pending_prompt = "Live Agent"
             st.rerun()
     
     col5, col6, col7, col8 = st.columns(4)
     with col5:
-        if st.button("Shipping Status", use_container_width=True):
+        if st.button("Shipping Status", use_container_width=True, key="chat_shipping_status"):
             st.session_state.pending_prompt = "Shipping Status"
             st.rerun()
     with col6:
-        if st.button("Check Order", use_container_width=True):
+        if st.button("Check Order", use_container_width=True, key="chat_check_order"):
             st.session_state.pending_prompt = "Check Order"
             st.rerun()
     with col7:
-        if st.button("Refund", use_container_width=True):
+        if st.button("Refund", use_container_width=True, key="chat_refund"):
             st.session_state.pending_prompt = "Refund"
             st.rerun()
     with col8:
-        if st.button("Billing", use_container_width=True):
+        if st.button("Billing", use_container_width=True, key="chat_billing"):
             st.session_state.pending_prompt = "Billing"
             st.rerun()

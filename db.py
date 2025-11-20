@@ -74,7 +74,51 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
     ended_at            TEXT,
     conversation_text   TEXT
 );
+
+
+CREATE TABLE IF NOT EXISTS feedback (
+    feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    conversation_id TEXT,
+    message TEXT,
+    feedback_type TEXT CHECK(feedback_type IN ('up','down')),
+    created_at TEXT DEFAULT (datetime('now'))
+);
 """
+# ---------------------------------------------------------------
+# FEEDBACK
+# ---------------------------------------------------------------
+def add_feedback(email: str, conversation_id: str, message: str, feedback_type: str) -> None:
+    """Add a thumbs up/down feedback entry."""
+    _exec(
+        """
+        INSERT INTO feedback (email, conversation_id, message, feedback_type)
+        VALUES (?, ?, ?, ?)
+        """,
+        (email, conversation_id, message, feedback_type)
+    )
+
+def get_feedback_summary(email: str) -> dict:
+    """Return count of thumbs up/down for a user."""
+    rows = _query(
+        "SELECT feedback_type, COUNT(*) as count FROM feedback WHERE email = ? GROUP BY feedback_type",
+        (email,)
+    )
+    summary = {"up": 0, "down": 0}
+    for row in rows:
+        summary[row["feedback_type"]] = row["count"]
+    return summary
+
+# automatic overall feedback analytics for all users
+def get_overall_feedback_summary() -> dict:
+    """Return total thumbs up/down across all users."""
+    rows = _query(
+        "SELECT feedback_type, COUNT(*) as count FROM feedback GROUP BY feedback_type"
+    )
+    summary = {"up": 0, "down": 0}
+    for row in rows:
+        summary[row["feedback_type"]] = row["count"]
+    return summary
 
 # ---------------------------------------------------------------
 # Utilities

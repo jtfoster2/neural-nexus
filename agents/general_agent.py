@@ -112,4 +112,3 @@ def summarize_conversation(conversation_id: int) -> str:
             f"Use only plain text, speed is the goal. \n\n{convo}"
         )
         return getattr(resp, "content", None) or str(resp) or "No summary available."
-
