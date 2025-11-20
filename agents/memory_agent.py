@@ -11,7 +11,7 @@ class AgentState(TypedDict, total=False):
     input: str
     email: Optional[str]
     conversation_id: Optional[str]
-    messages: List[Dict[str, str]]      # [{"role":"user|assistant","content":"..."}]
+    messages: List[Dict[str, str]]     
     
     # Context from memory_agent / supervisor
     context_summary: Optional[str]
@@ -20,7 +20,7 @@ class AgentState(TypedDict, total=False):
     memory: Optional[Dict[str, Any]]
 
 # ------------ Simple REGEX identifiers ------------
-ORDER  = re.compile(r"\bORD[\-_]?\d{3,}\b", re.IGNORECASE) #example: ORD_12345
+ORDER  = re.compile(r"\bord_\d{3,7}\b", re.IGNORECASE) #example: ORD_12345
 PAY    = re.compile(r"\bPAY[\-_]?\d{3,}\b", re.IGNORECASE) #example: PAY_98765
 EMAIL  = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", re.IGNORECASE) #email regex
 DATE   = re.compile(r"\b(20\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[/\-]\d{1,2}[/\-]20\d{2})\b") #YYYY-MM-DD or MM/DD/YYYY

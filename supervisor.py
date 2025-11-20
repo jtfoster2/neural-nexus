@@ -44,17 +44,18 @@ class AgentState(TypedDict, total=False):
 # ============================================================
 
 INTENT_KEYWORDS = {
-    "check order": ["order", "orders", "check order", "my order", "track order"],
-    "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
+
     "billing": ["billing", "payment", "charge", "invoice"],
     "check payment": ["payment status", "check payment", "payment"],
+    "change order address": ["change order address", "change shipping address", "update shipping address", "change my shipping address", "update my shipping address", "change address on ord_", "shipping address on ord_"],
+    "check order": ["order", "orders", "check order", "my order", "track order", "where is my order", "order status"],
     "change address": ["change address", "update address", "new address"],
     "change phone number": ["change phone number", "update phone number", "new phone number", "phone="],
     "change full name": ["change full name", "update full name", "change name", "update name", "first=", "last="],
     "change email": ["change email", "update email", "new email"],
     "change password": ["change password", "reset password", "forgot password"],
     "policy": ["return policy", "warranty", "policy", "eligible for return",
-               "return window", "is this under warranty", "warranty claim"],
+               "return window", "is this under warranty", "warranty claim", "eligibility"],
     "refund": ["refund", "return", "money back"],
     "message agent": ["message agent", "notify user", "email user",
                       "send confirmation", "send me an email", "send email"],
@@ -76,9 +77,16 @@ def supervisor(state: AgentState):
     print(f"[SUPERVISOR] User Input: {text}")
 
     # --------------------------------------------------------
-    # Detect intent (keyword → LLM fallback)
+    # Detect intent
     # --------------------------------------------------------
     intent = detect_intent(text)
+
+    try:
+        context = memory_agent(state)
+        state.update(context)
+        print("[SUPERVISOR] Memory agent added context for intent detection.")
+    except Exception as e:
+        print(f"[SUPERVISOR] Memory agent failed during intent detection: {e}") 
 
     if not intent:
         try:
@@ -98,7 +106,7 @@ def supervisor(state: AgentState):
                 "billing": "billing",
                 "check payment": "check payment",
                 "forgot password": "forgot password",
-                "change password": "change password", #changed to change password
+                "change order address": "change order address",
                 "change password": "change password",
                 "change address": "change address",
                 "change phone number": "change phone number",
@@ -213,6 +221,7 @@ graph.add_conditional_edges(
     {
         "check order": "order_agent",
         "shipping status": "shipping_agent",
+        "change order address": "order_agent",
 
         "billing": "billing_agent",
         "check payment": "billing_agent",
@@ -274,30 +283,4 @@ def ask_agent_events(query: str, thread_id: str = "default", email: str | None =
         if s.get("output"):
             yield ("output", s["output"])
 
-#this is to detect keywords when users type-in the input
-INTENT_KEYWORDS = {
-    "check order": ["order", "orders", "check order", "my order", "track order"],
-    "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
-    "billing": ["billing", "charge", "invoice"],
-    "check payment": ["payment status", "check payment", "payment"],
-    "change address": ["change address", "update address", "new address"],
-    "change phone number": ["change phone number", "update phone number", "new phone number", "update my phone", "i want to change my phone number", "phone="],
-    "change full name": ["change full name", "update full name", "change name", "update name", "edit name", "new name", "change my name", "update my name", "update my full name", "first=", "last="],
-    "change email": ["change email", "update email", "new email"],
-    "change password": ["change password", "reset password", "update password", "forgot password", "forgot my password", "lost password"],
-    "policy": ["return policy", "warranty", "policy", "can i return", "eligible for return", "return window", "is this under warranty", "warranty claim"],
-    "refund": ["refund", "return", "money back"],
-    "message agent": ["message agent", "notify user", "email user", "send confirmation", "send me an email"],
-    "email agent": ["email agent", "send email", "message"],
-    "live agent": ["live agent", "human agent", "chat with agent"],
-    "memory": ["history", "memory", "chat history"],
-    
-}
 
-def detect_intent(user_input: Optional[str]):
-    """Match user input against keywords to detect intent."""
-    text = (user_input or "").lower()
-    for intent, keywords in INTENT_KEYWORDS.items():
-        if any(keyword in text for keyword in keywords):
-            return intent
-    return None

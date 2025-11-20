@@ -239,6 +239,10 @@ def set_order_shipping_name(order_id: str, name: str): _exec("UPDATE orders SET 
 def set_order_shipping_address(order_id: str, address: str): _exec("UPDATE orders SET shipping_address=?, updated_at=datetime('now') WHERE order_id=?", (address, order_id))
 def set_order_total(order_id: str, total_cents: int): _exec("UPDATE orders SET total_cents=?, updated_at=datetime('now') WHERE order_id=?", (total_cents, order_id))
 
+def get_order_by_id(order_id: str) -> Optional[sqlite3.Row]:
+    rows = _query("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+    return rows[0] if rows else None   
+
 def list_orders_for_user(email: str): return _query("SELECT * FROM orders WHERE email=? ORDER BY created_at DESC", (email.lower(),))
 
 
