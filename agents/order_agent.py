@@ -28,7 +28,7 @@ def order_agent(state: AgentState) -> AgentState:
     print("[AGENT] order_agent selected")
     user = db.get_user(state.get("email") or "").strip().lower()
     if not user:
-        user = db.get_user(state.get("input") or "").strip().lower()
+        user = db.get_user(state.get("input") or "").strip()
 # Fetch orders for the user
     if user:
         # Adjust columns to match your db schema
