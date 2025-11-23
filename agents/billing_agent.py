@@ -10,6 +10,12 @@ class AgentState(TypedDict, total=False):
     tool_calls: List[str]
     tool_results: List[str]
     output: Optional[str]
+
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
     
 # ---------- billing_agent functionalities ----------
 def billing_agent(state: AgentState) -> AgentState:
@@ -39,7 +45,7 @@ def get_payment_status(state: AgentState) -> AgentState:
         )
         return state
     if "_" not in (state.get("input") or ""):
-        state["output"] = "Please enter your payment ID to check its status (e.g., pay_204)."
+        state["output"] = "Please enter your payment ID to check its status (e.g., `pay_204`)."
         return state
     
     payment_id = (state.get("input") or "").strip()

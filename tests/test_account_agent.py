@@ -11,7 +11,6 @@ ADDRESS = "123 Main St, Atlanta, GA 30318"
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
-    # Setup: create test user
     db._exec("DELETE FROM users WHERE email = ?", [EMAIL])
     user_by_phone = db.get_user_by_phone(PHONE)
     if user_by_phone:

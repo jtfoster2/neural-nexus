@@ -78,7 +78,7 @@ def return_agent(state: AgentState) -> AgentState:
     else:
         # if no return info found, ask for the order number
         state["output"] = (
-            "I can help with getting a return started. Please enter your order number of the order you'd like to return (e.g., ord_123)."
+            "I can help with getting a return started. Please enter your order number of the order you'd like to return (e.g., `ord_123`)."
             
         )
         return state

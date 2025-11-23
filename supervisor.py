@@ -45,6 +45,7 @@ class AgentState(TypedDict, total=False):
 
 INTENT_KEYWORDS = {
     "check order": ["check order", "my order", "track order", "order status"],
+    "change shipping address": ["change shipping address", "update shipping address", "shipping address"], # checked before "change address"
     "shipping status": ["shipping", "delivery", "where is my package", "track shipping"],
     "billing": ["billing", "charge", "invoice"],
     "check payment": ["payment status", "check payment", "payment"],
@@ -62,8 +63,20 @@ INTENT_KEYWORDS = {
     "memory": ["history", "memory", "chat history"],
 }
 
+# def detect_intent(text: Optional[str]) -> Optional[str]:
+#     t = (text or "").lower()
+#     for intent, keys in INTENT_KEYWORDS.items():
+#         if any(k in t for k in keys):
+#             return intent
+#     return None
+
 def detect_intent(text: Optional[str]) -> Optional[str]:
     t = (text or "").lower()
+    import re
+    order_id_match = re.search(r"ord_[a-zA-Z0-9]+", t)
+    address_match = re.search(r"\d{1,6}\s+[A-Za-z0-9 .'-]+,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?", t)
+    if order_id_match and address_match:
+        return "change shipping address"
     for intent, keys in INTENT_KEYWORDS.items():
         if any(k in t for k in keys):
             return intent
@@ -101,6 +114,7 @@ def supervisor(state: AgentState):
             mapping = {
                 "check order": "check order",
                 "shipping status": "shipping status",
+                "change shipping address": "change shipping address",
                 "billing": "billing",
                 "check payment": "check payment",
                 "change password": "change password",
@@ -126,7 +140,20 @@ def supervisor(state: AgentState):
     # --------------------------------------------------------
     thread_id = str(state.get("conversation_id") or "")
     prev_intent = LAST_INTENT_BY_THREAD.get(thread_id)
-    
+
+    # # suppress routing to account_agent after order address update
+    # last_action = state.get("last_action")
+    # if last_action == "order_address_updated":
+    #     LAST_INTENT_BY_THREAD[thread_id] = "change shipping address"
+    #     print("[SUPERVISOR] Set previous intent to change shipping address after order address update.")
+    # if (
+    #     prev_intent == "change shipping address" and
+    #     intent == "change address" and
+    #     last_action == "order_address_updated"
+    # ):
+    #     intent = "change shipping address"
+    #     print("[SUPERVISOR] Suppressing profile address update after order address change.")
+
     # if classified as "other" but we're in specific agent context, stay there
     # these agents ask users to provide specific IDs that could be misclassified by the LLM
     if intent == "other" and prev_intent in ["refund", "return", "billing", "check payment", "change address", "change phone number", "change full name"]:
@@ -232,6 +259,9 @@ graph.add_conditional_edges(
         "check order": "order_agent",
         "shipping status": "shipping_agent",
         "billing": "billing_agent",
+        "change order address": "order_agent",
+        "change shipping address": "order_agent",
+
         "check payment": "billing_agent",
         "change address": "account_agent",
         "change phone number": "account_agent",
