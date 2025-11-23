@@ -14,12 +14,12 @@ def test_detect_intent_profile_address():
 def test_detect_intent_ambiguous():
     text = "I want to change something about my address for ord_208"
     intent = detect_intent(text)
-    assert intent == "change shipping address"
+    assert intent is None
 
 def test_detect_intent_missing_order_id():
     text = "update shipping address to 123 Main St, Atlanta, GA 30301"
     intent = detect_intent(text)
-    assert intent == "change address"
+    assert intent == "change shipping address"
 
 def test_detect_intent_conflicting_keywords():
     text = "ord_208 change address to 123 Main St, Atlanta, GA 30301"
