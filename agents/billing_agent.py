@@ -45,7 +45,7 @@ def get_payment_status(state: AgentState) -> AgentState:
         )
         return state
     if "_" not in (state.get("input") or ""):
-        state["output"] = "Please enter your payment ID to check its status (e.g., pay_204)."
+        state["output"] = "Please enter your payment ID to check its status (e.g., `pay_204`)."
         return state
     
     payment_id = (state.get("input") or "").strip()

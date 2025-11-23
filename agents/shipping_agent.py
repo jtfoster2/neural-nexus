@@ -79,11 +79,21 @@ class ShippingAgent:
 
         # 1) Perception / memory
         self._extract_email(state)
+        # Extract order ID from input
+        order_id = None
+        text = (state.get("input") or "").strip()
+        match = re.search(r"ord_\d{3,7}", text, re.IGNORECASE)
+        if match:
+            order_id = match.group(0)
+            state["order_id"] = order_id
 
         email = (state.get("email") or "").strip().lower()
-        if not email:
-            state["output"] = "Please provide your email so I can check your shipping status."
-            state["confidence"] = 0.4
+
+        if not email and not order_id:
+            state["output"] = (
+                "To check your shipping status, please provide your order number (for example `ord_001`)."
+            )
+            state["confidence"] = 0.3
             return state
 
         # 2) Plan: figure out required tools
@@ -120,14 +130,16 @@ class ShippingAgent:
             state["email"] = m.group(0).lower()
 
 # ----------------- Planning -----------------
-    def _plan(self, state: AgentState) -> List[Dict[str, Any]]: 
-        
-        # expand as needed
+    def _plan(self, state: AgentState) -> List[Dict[str, Any]]:
         email = (state.get("email") or "").lower().strip()
-        order_id = None
+        order_id = (state.get("order_id") or "").strip()
         address = None
         intent = (state.get("intent") or "").lower()
         text = (state.get("input") or "").lower()
+
+        # Prefer order_id for shipping status if present
+        if intent == "shipping status" and order_id:
+            return [{"tool": "orders:get_by_id", "args": {"order_id": order_id}}]
 
         if intent == "shipping status" and email:
             return [{"tool": "orders:list_for_user", "args": {"email": email}}]
@@ -186,13 +198,20 @@ class ShippingAgent:
     def _interpret(self, observations: List[Dict[str, Any]], state: AgentState) -> Dict[str, Any]:
         """
         Normalize status and pick latest order. Returns a structured dict suitable for UI.
+        Handles both single row and list results.
         """
         if not observations:
             return {"status": "Unknown", "order_id": None, "created_at": None, "confidence": 0.3}
 
-        # We expect a single observation from orders:list_for_user
-        orders = observations[0]["obs"] or []
-        preview = [self._row_to_dict(r) for r in orders]
+        obs = observations[0]["obs"]
+        # Handle single row or list
+        if obs is None:
+            preview = []
+        elif isinstance(obs, list):
+            preview = [self._row_to_dict(r) for r in obs]
+        else:
+            preview = [self._row_to_dict(obs)]
+
         if not preview:
             return {"status": "Unknown", "order_id": None, "created_at": None, "confidence": 0.6}
 
@@ -223,7 +242,14 @@ class ShippingAgent:
         order_id = result.get("order_id")
         created_at = result.get("created_at")
 
+        # If status is unknown, check if user provided an order ID
         if status == "Unknown":
+            input_order_id = order_id
+            # Try to get from input if not found
+            if not input_order_id:
+                input_order_id = None
+            if input_order_id:
+                return f"I couldn’t find any order with ID `{input_order_id}`."
             return "I couldn’t find any recent orders associated with your email."
 
         parts = []

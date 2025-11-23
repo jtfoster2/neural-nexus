@@ -123,12 +123,20 @@ class OrderAgent:
 
         plan = self._plan(state, email=email, order_id=order_id)
         if not plan:
-            state["output"] = (
-                "Please provide either your email or an order ID (for example `ORD_001`) "
-                "so I can look up your order."
-            )
-            state["confidence"] = 0.4
-            return state
+            if not email and not order_id:
+                state["output"] = (
+                    "To look up your order, please provide your order number (for example `ord_001`)."
+
+                )
+                state["confidence"] = 0.3
+                return state
+            else:
+                state["output"] = (
+                    "Please provide either your email or an order ID (for example `ord_001`) "
+                    "so I can look up your order."
+                )
+                state["confidence"] = 0.4
+                return state
 
         # 3) Act
         observations: List[Dict[str, Any]] = []
