@@ -132,3 +132,7 @@ def test_policy_agent_wrapper_handles_error(monkeypatch):
 
     # We should get the fake safe response, not an exception
     assert out["output"] == "fallback: safe response"
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
