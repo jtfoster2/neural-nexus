@@ -10,6 +10,12 @@ class AgentState(TypedDict, total=False):
     tool_calls: List[str]
     tool_results: List[str]
     output: Optional[str]
+
+    # Context from memory_agent / supervisor
+    context_summary: Optional[str]
+    context_refs: Optional[List[str]]
+    preface: Optional[str]
+    memory: Optional[Dict[str, Any]]
     
 # ---------- billing_agent functionalities ----------
 def billing_agent(state: AgentState) -> AgentState:

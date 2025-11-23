@@ -36,7 +36,6 @@ def test_db():
     if os.path.exists(test_db_path):
         os.unlink(test_db_path)
 
-# All test functions below (converted from unittest)
 def test_get_user_by_email():
     user = db.get_user("test1@example.com")
     assert user is not None
