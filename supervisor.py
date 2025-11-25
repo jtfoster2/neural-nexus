@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 import os
 import re
+from difflib import SequenceMatcher
 from pathlib import Path
 
 # --- Specialist agents ---
@@ -63,23 +64,59 @@ INTENT_KEYWORDS = {
     "memory": ["history", "memory", "chat history"],
 }
 
-# def detect_intent(text: Optional[str]) -> Optional[str]:
-#     t = (text or "").lower()
-#     for intent, keys in INTENT_KEYWORDS.items():
-#         if any(k in t for k in keys):
-#             return intent
-#     return None
+
+def _normalize(text: str) -> str:
+    """
+    Simple text normalizer for intent detection:
+    - handles "None" safely
+    - all lowercases
+    - removes punctuation
+    - collapses repeated spaces
+    """
+    if text is None:
+        return ""
+
+    # lowercase
+    t = text.lower()
+
+    # replace any non alphanumeric or whitespace with a space
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+
+    # collapse multiple spaces
+    t = re.sub(r"\s+", " ", t).strip()
+
+    return t
 
 def detect_intent(text: Optional[str]) -> Optional[str]:
-    t = (text or "").lower()
-    import re
-    order_id_match = re.search(r"ord_[a-zA-Z0-9]+", t)
-    address_match = re.search(r"\d{1,6}\s+[A-Za-z0-9 .'-]+,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?", t)
-    if order_id_match and address_match:
-        return "change shipping address"
+    t_raw = text or ""
+    t_norm = _normalize(t_raw)
+    words = t_norm.split()
+
+    best_intent: Optional[str] = None
+    best_score: float = 0.0
+
     for intent, keys in INTENT_KEYWORDS.items():
-        if any(k in t for k in keys):
-            return intent
+        for k in keys:
+            k_norm = _normalize(k)
+
+            # match on exact string
+            if k_norm and k_norm in t_norm:
+                return intent
+
+            # Fuzzy matches against each word in the user input
+            for w in words:
+                if not w:
+                    continue
+                score = SequenceMatcher(None, k_norm, w).ratio()
+                if score > best_score:
+                    best_score = score
+                    best_intent = intent
+
+    # Only trusts fuzzy result if similarity is high enough ******TUNING NEEDED******
+    if best_score >= 0.75:
+        print(f"[SUPERVISOR] Fuzzy intent match: {best_intent} (score={best_score:.2f})")
+        return best_intent
+
     return None
 
 
