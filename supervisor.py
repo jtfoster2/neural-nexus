@@ -103,7 +103,7 @@ def detect_intent(text: Optional[str]) -> Optional[str]:
             if k_norm and k_norm in t_norm:
                 return intent
 
-            # Fuzzy matches against each word in the user input
+            # Typo detection: Fuzzy logic matches against each word in the user input
             for w in words:
                 if not w:
                     continue
