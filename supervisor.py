@@ -99,7 +99,7 @@ def detect_intent(text: Optional[str]) -> Optional[str]:
         for k in keys:
             k_norm = _normalize(k)
 
-            # match on exact string
+            # returns if exact string is matched
             if k_norm and k_norm in t_norm:
                 return intent
 
