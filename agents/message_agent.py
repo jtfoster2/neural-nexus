@@ -7,9 +7,55 @@ import db
 import sendgrid
 from dotenv import load_dotenv
 from sendgrid_tool import send_email
+from vonage import Auth, Vonage
+from vonage_sms import SmsMessage, SmsResponse
 
 # --- Load .env ---
 load_dotenv()
+
+##PLEASE NOTE THIS METHOD (send_sms_vonage) ONLY WORKS FOR Version 4
+def send_sms_vonage(to_phone: str, message: str):
+    print(f"[DEBUG] send_sms_vonage called with to_phone={to_phone}, message={message}")
+
+    VONAGE_API_KEY = os.environ.get("VONAGE_API_KEY")
+    VONAGE_API_SECRET = os.environ.get("VONAGE_API_SECRET")
+    SMS_SENDER_ID = os.environ.get("VONAGE_SMS_SENDER_ID") or os.environ.get("VONAGE_SMS_FROM")
+
+    if not VONAGE_API_KEY or not VONAGE_API_SECRET or not SMS_SENDER_ID:
+        raise ValueError("Missing Vonage API credentials or sender ID in environment variables")
+
+    # create Vonage client with Auth
+    client = Vonage(Auth(api_key=VONAGE_API_KEY, api_secret=VONAGE_API_SECRET))
+
+    # build SmsMessage model
+    sms_message = SmsMessage(
+        to=to_phone,
+        from_=SMS_SENDER_ID,
+        text=message,
+    )
+
+    try:
+        # send via client.sms.send(...)
+        response: SmsResponse = client.sms.send(sms_message)
+        # SmsResponse is a Pydantic model
+        print("Vonage SMS: Message sent, response:", response) #DEBUGGING
+        return {
+            "success": True,
+            "message_id": getattr(response, "message_id", None),
+            "to": to_phone,
+            "error_text": None,
+            "status": "0",
+        }
+    except Exception as e:
+        print(f"[ERROR] send_sms_vonage exception: {e}") #DEBUGGING
+        return {
+            "success": False,
+            "error_text": str(e),
+            "to": to_phone,
+            "message_id": None,
+            "status": "exception",
+        }
+
 
 class AgentState(TypedDict, total=False):
     input: str
@@ -44,7 +90,7 @@ class AgentState(TypedDict, total=False):
     memory: Optional[Dict[str, Any]]
 
 def send_email(to_email: str, subject: str, value: str):
-
+    print(f"[DEBUG] send_email called with to_email={to_email}, subject={subject}, value={value}")
     sendgrid_key = os.environ.get("SENDGRID_API_KEY") # Your SendGrid API key
     verified_sender = os.environ.get("SENDGRID_VERIFIED_SENDER") # Your verified sender email
     if not sendgrid_key:
@@ -65,8 +111,13 @@ def send_email(to_email: str, subject: str, value: str):
     }
 
     # Perform the API request
-    response = send_grid.client.mail.send.post(request_body=data)
-
+    try:
+        print(f"[DEBUG] send_email sending with data: {data}")
+        response = send_grid.client.mail.send.post(request_body=data)
+        print(f"[DEBUG] send_email response: status_code={response.status_code}, body={response.body}")
+    except Exception as e:
+        print(f"[ERROR] send_email exception: {e}")
+        raise
     # Return simplified result for agent logging
     return {
         "success": response.status_code in (200, 202),
@@ -84,7 +135,7 @@ TOOL_REGISTRY = {
         "fn": lambda to, subject, body, cc=None, bcc=None: send_email(
             to_email=to,
             subject=subject,
-            value=body,          # match your send_email signature
+            value=body,
         ),
         "schema": {
             "to": "str (required, email)",
@@ -94,6 +145,17 @@ TOOL_REGISTRY = {
             "bcc": "list[str] (optional)",
         },
         "desc": "Send an email via SendGrid with optional CC/BCC."
+    },
+    "notify:send_sms": {
+        "fn": lambda to, body: send_sms_vonage(
+            to_phone=to,
+            message=body
+        ),
+        "schema": {
+            "to": "str (required, phone number)",
+            "body": "str (required)",
+        },
+        "desc": "Send an SMS via Vonage."
     }
 }
 
@@ -118,10 +180,11 @@ class MessageAgent:
     # --------- entrypoint ---------
     def run(self, state: AgentState) -> AgentState:
         self._ensure_lists(state)
-        state["intent"] = state.get("intent") or "send email"
+        state["intent"] = state.get("intent") or "send message"
 
         # Perception: ensures we have a recipient email if not already submitted
         self.extract_email(state)
+        self.extract_phone(state)
 
         # Build message (allows user overrides on subject/body)
         if not state.get("subject") or not state.get("body"):
@@ -132,34 +195,46 @@ class MessageAgent:
                 details=state.get("details"),
                 name=state.get("name"),
             )
-
             state["subject"] = state.get("subject") or subj
             state["body"] = state.get("body") or body
 
-
         # Validate required fields
         problems = self._validate(state)
+        print(f"[DEBUG] MessageAgent validation problems: {problems}")
+        print(f"[DEBUG] MessageAgent state: email={state.get('email')}, phone={state.get('phone')}, subject={state.get('subject')}, body={state.get('body')}")
         if problems:
-            state["output"] = "I can’t send the email yet:\n- " + "\n- ".join(problems)
+            state["output"] = "I can’t send the message yet:\n- " + "\n- ".join(problems)
             state["confidence"] = 0.3
             return state
 
-        # Plan 
+        # Plan
         plan = self._plan(state)
+        print(f"[DEBUG] MessageAgent plan steps: {plan}")
 
-        # Act 
+        # Act
         observations = []
         for step in plan:
+            print(f"[DEBUG] Executing tool: {step['tool']} with args: {step['args']}")
             obs = self._call_tool_with_retries(step["tool"], step["args"], state)
+            print(f"[DEBUG] Tool result: {obs}")
             observations.append({"step": step, "obs": obs})
 
         # Observe/Reason
         result = self._interpret(observations, state)
+        print(f"[DEBUG] MessageAgent final result: {result}")
 
         # Communicate
         state["output"] = self._format_user_message(result, state)
         state["confidence"] = result.get("confidence", 0.85)
         return state
+
+    def extract_phone(self, state: AgentState) -> None:
+        if state.get("phone"):
+            return
+        text = (state.get("input") or "").strip()
+        m = re.search(r"\+?[1-9]\d{1,14}", text)
+        if m:
+            state["phone"] = m.group(0)
 
     # ------------- internals -------------
 
@@ -177,27 +252,41 @@ class MessageAgent:
 
     def _validate(self, state: AgentState) -> List[str]:
         issues = []
-        if not state.get("email") or not EMAIL_REGEX.fullmatch(state["email"]):  # type: ignore[index]
-            issues.append("Missing or invalid recipient email.")
-        if not state.get("subject"):
-            issues.append("Missing subject.")
+        email_valid = state.get("email") and EMAIL_REGEX.fullmatch(state["email"])
+        phone_valid = state.get("phone") and re.fullmatch(r"\+?[1-9]\d{1,14}", state["phone"])
+        if not (email_valid or phone_valid):
+            issues.append("Missing or invalid recipient: need at least one valid email or phone number.")
+        if state.get("email") and not email_valid:
+            issues.append("Invalid recipient email.")
+        if state.get("phone") and not phone_valid:
+            issues.append("Invalid recipient phone number.")
         if not state.get("body"):
             issues.append("Missing body.")
         return issues
 
     # ----------------- Planning -----------------
     def _plan(self, state: AgentState) -> List[Dict[str, Any]]:
-        # Single-step: send the email using the notify tool
-        return [{
-            "tool": "notify:send_email",
-            "args": {
-                "to": state["email"],
-                "subject": state["subject"],
-                "body": state["body"],
-                "cc": state.get("cc") or [],
-                "bcc": state.get("bcc") or [],
-            },
-        }]
+        steps = []
+        if state.get("phone"):
+            steps.append({
+                "tool": "notify:send_sms",
+                "args": {
+                    "to": state["phone"],
+                    "body": state["body"],
+                },
+            })
+        if state.get("email"):
+            steps.append({
+                "tool": "notify:send_email",
+                "args": {
+                    "to": state["email"],
+                    "subject": state["subject"],
+                    "body": state["body"],
+                    "cc": state.get("cc") or [],
+                    "bcc": state.get("bcc") or [],
+                },
+            })
+        return steps
 
     def _call_tool_with_retries(self, tool_name: str, args: Dict[str, Any], state: AgentState):
         if tool_name not in TOOL_REGISTRY:
@@ -362,34 +451,47 @@ class MessageAgent:
         if not observations:
             return {"sent": False, "confidence": 0.4}
 
-        raw = observations[0]["obs"]
-        sent_ok = True
-        message_id = None
-
-        # Try to infer success/message id from common shapes
-        try:
-            if isinstance(raw, dict):
-                sent_ok = bool(raw.get("success", True))
-                message_id = raw.get("message_id") or raw.get("id")
-            elif isinstance(raw, (list, tuple)) and raw:
-                # e.g., SendGrid responses
-                message_id = getattr(raw[0], "message_id", None) if hasattr(raw[0], "message_id") else None
-                sent_ok = True
-            else:
-                sent_ok = True
-        except Exception:
+        results = []
+        for obs in observations:
+            raw = obs["obs"]
             sent_ok = True
+            message_id = None
+            to = None
+            try:
+                if isinstance(raw, dict):
+                    sent_ok = bool(raw.get("success", True))
+                    message_id = raw.get("message_id") or raw.get("id")
+                    to = raw.get("to")
+                elif isinstance(raw, (list, tuple)) and raw:
+                    message_id = getattr(raw[0], "message_id", None) if hasattr(raw[0], "message_id") else None
+                    sent_ok = True
+                else:
+                    sent_ok = True
+            except Exception:
+                sent_ok = True
+            results.append({"sent": sent_ok, "message_id": message_id, "to": to, "tool": obs["step"]["tool"]})
 
-        return {"sent": sent_ok, "message_id": message_id, "confidence": 0.9 if sent_ok else 0.5}
+        overall_sent = all(r["sent"] for r in results)
+        return {"sent": overall_sent, "results": results, "confidence": 0.9 if overall_sent else 0.5}
 
     def _format_user_message(self, result: Dict[str, Any], state: AgentState) -> str:
         if not result.get("sent"):
-            return "I tried to send the email but it may not have gone through. Please check logs."
-        mid = result.get("message_id")
-        to = state.get("email")
-        if mid:
-            return f"Email sent to **{to}** (message id: `{mid}`)."
-        return f"Email sent to **{to}**."
+            return "I tried to send the message but it may not have gone through. Please check logs."
+        outputs = []
+        for r in result.get("results", []):
+            mid = r.get("message_id")
+            to = r.get("to") or state.get("phone") if r["tool"] == "notify:send_sms" else state.get("email")
+            if r["tool"] == "notify:send_sms":
+                if mid:
+                    outputs.append(f"SMS sent to **{to}** (message id: `{mid}`).")
+                else:
+                    outputs.append(f"SMS sent to **{to}**.")
+            elif r["tool"] == "notify:send_email":
+                if mid:
+                    outputs.append(f"Email sent to **{to}** (message id: `{mid}`).")
+                else:
+                    outputs.append(f"Email sent to **{to}**.")
+        return "\n".join(outputs)
 
 # --------- Backward-compatible function ---------
 
@@ -410,7 +512,7 @@ def message_agent(state: AgentState) -> AgentState:
         state["output"] = f"Email failed: {type(e).__name__}: {e}"
         state["confidence"] = 0.2
         return state
-        
+
 
 
 

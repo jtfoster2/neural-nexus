@@ -425,16 +425,18 @@ if st.session_state.get("page") == "settings" and st.session_state.get("user_ema
                 db.set_user_state(st.session_state.user_email, state)
                 db.set_user_country(st.session_state.user_email, country)
                 db.set_user_zip_code(st.session_state.user_email, zip_code)
-                #email user about profile update
+                # Notify user by email and SMS about profile update
+                notification_body = "Your account profile has been updated."
                 msg.message_agent({
                     "email": email,
+                    "phone": phone,
                     "name": db.get_user_first_name(email) or "",
                     "event_type": "account_changed",
+                    "body": notification_body,
                 })
                 st.success("Profile updated")
                 # keep user on the Settings page; just refresh display name in session
                 st.session_state.user_name = first or st.session_state.user_name
-
 
             except Exception as e:
                 st.error(f"Error updating account: {e}")

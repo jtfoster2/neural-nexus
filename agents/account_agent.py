@@ -157,13 +157,20 @@ def change_address_agent(state: AgentState) -> AgentState:
         user = db.get_user(email)
         pretty = _format_address(user)
         
-        # send email notification
-        msg.message_agent({
+        # Fetch phone number
+        phone = db.get_user_phone_number(email)
+        print(f"[DEBUG] change_address_agent sending notification: email={email}, phone={phone}, name={db.get_user_first_name(email)}, event_type=address_updated, details=Address updated to: {pretty}")
+        # send notification to both email and phone
+        notification_payload = {
             "email": email,
+            "phone": phone,
             "name": db.get_user_first_name(email) or "",
             "event_type": "address_updated",
             "details": f"Address updated to: {pretty}"
-        })
+        }
+        print(f"[DEBUG] change_address_agent notification payload: {notification_payload}")
+        notification_result = msg.message_agent(notification_payload)
+        print(f"[DEBUG] change_address_agent notification result: {notification_result}")
         
         details = [
             "**Address Update Confirmation**",
@@ -242,20 +249,32 @@ def change_phone_number_agent(state: "AgentState") -> "AgentState":
     if phone_match:
         # Extract the three groups: area code, exchange, number
         area_code, exchange, number = phone_match.groups()
-        updates["phone"] = f"{area_code}{exchange}{number}"
+        raw_digits = f"{area_code}{exchange}{number}"
+        # Ensure E.164 format for US numbers
+        if len(raw_digits) == 10:
+            updates["phone"] = f"+1{raw_digits}"
+        else:
+            updates["phone"] = raw_digits
 
     if updates:
         try:
             _apply_phone_updates(email, updates)  # uses set_user_phone(...)
             print(f"[PHONE] wrote phone={updates['phone']} for {email}")
             
-            # send email notification
-            msg.message_agent({
+            # Fetch phone number (just updated)
+            phone = updates["phone"]
+            print(f"[DEBUG] change_phone_number_agent sending notification: email={email}, phone={phone}, name={db.get_user_first_name(email)}, event_type=phone_updated, details=Phone number updated to: {_pretty_phone_number(phone)}")
+            # send notification to both email and phone
+            notification_payload = {
                 "email": email,
+                "phone": phone,
                 "name": db.get_user_first_name(email) or "",
                 "event_type": "phone_updated",
-                "details": f"Phone number updated to: {_pretty_phone_number(updates['phone'])}"
-            })
+                "details": f"Phone number updated to: {_pretty_phone_number(phone)}"
+            }
+            print(f"[DEBUG] change_phone_number_agent notification payload: {notification_payload}")
+            notification_result = msg.message_agent(notification_payload)
+            print(f"[DEBUG] change_phone_number_agent notification result: {notification_result}")
             
         except Exception as e:
             state["output"] = f"Sorry, I couldn't save your phone number ({e}). Please try again."
@@ -375,13 +394,20 @@ def change_full_name_agent(state: AgentState) -> AgentState:
         user = db.get_user(email)
         pretty = _format_full_name(user)
         
-        # send email notification
-        msg.message_agent({
+        # Fetch phone number
+        phone = db.get_user_phone_number(email)
+        print(f"[DEBUG] change_full_name_agent sending notification: email={email}, phone={phone}, name={db.get_user_first_name(email)}, event_type=name_updated, details=Name updated to: {pretty}")
+        # send notification to both email and phone
+        notification_payload = {
             "email": email,
+            "phone": phone,
             "name": db.get_user_first_name(email) or "",
             "event_type": "name_updated",
             "details": f"Name updated to: {pretty}"
-        })
+        }
+        print(f"[DEBUG] change_full_name_agent notification payload: {notification_payload}")
+        notification_result = msg.message_agent(notification_payload)
+        print(f"[DEBUG] change_full_name_agent notification result: {notification_result}")
         
         details = [
             "**Name Update Confirmation**",
