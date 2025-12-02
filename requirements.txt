@@ -8,3 +8,4 @@ pydantic==1.*
 sendgrid
 passlib[bcrypt]
 pytest
+vonage
