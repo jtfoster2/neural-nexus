@@ -33,6 +33,7 @@ This project uses **SQLite** to store order and shipping data.
 - **Vonage SMS** integration (with working agent logic).
 - **SendGrid** email integration.
 - Order and shipping data stored in **SQLite.**
+- User and system-wide feedback collection and display
 
 ---
 
@@ -84,11 +85,15 @@ Then open the link in your browser (default: [http://localhost:8501](http://loca
 
 ```
 .
-├── agent.py       # LangGraph workflow (planner, tools, finalizer)
-├── app.py         # Streamlit UI
-├── requirements.txt
-├── db.py          # Database (SQLite)
-└── .env           # Environment variables (Google API key)
+├── agents/         # Agent modules (messaging, account, order, etc.)
+├── agents.py       # LangGraph workflow (planner, tools, finalizer)
+├── app.py          # Streamlit UI
+├── supervisor.py   # Manages all agents and event routing
+├── db.py           # Database logic (SQLite)
+├── sendgrid_tool.py    # SendGrid email integration
+├── tests/              # Ensure reliability of workflows
+├── requirements.txt    # Python dependencies
+└── .env                # Environment variables
 
 ```
 
