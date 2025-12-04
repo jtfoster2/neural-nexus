@@ -1,5 +1,14 @@
 # 🤖 Agentic Gemini App
 
+## 👥 Team Members
+- John Foster (Team Lead/Developer)
+- Jeff Scoggins (Lead Developer)
+- Ploynapas Ashlaw (Developer)
+- Christopher Wilder (Developer)
+- Catherine Ayeronwi (Developer)
+
+---
+
 This project is a **multi-tool AI agent** built with:
 - [LangGraph](https://github.com/langchain-ai/langgraph) for agent workflows
 - [LangChain](https://www.langchain.com/) for LLM abstraction
@@ -17,13 +26,13 @@ This project uses **SQLite** to store order and shipping data.
 
 ## 🚀 Features
 - Uses **Google Gemini** (`gemini-2.5-flash`) as the reasoning model.
-- Multi-tool agent with:
-
-  #### FOR FUTURE EXPANSION####
-
+- Multi-tool agent (supports messaging, notifications, etc.).
 - Built with **LangGraph** → structured workflows with planner → tool executor → finalizer.
 - **Streamlit chat app** with session memory.
 - Environment variables managed via `.env`.
+- **Vonage SMS** integration (with working agent logic).
+- **SendGrid** email integration.
+- Order and shipping data stored in **SQLite.**
 
 ---
 
@@ -49,10 +58,10 @@ pip install -r requirements.txt
    GOOGLE_API_KEY="your_api_key_here"
    SENDGRID_API_KEY="your_api_key_here"
    SENDGRID_VERIFIED_SENDER="your_api_key_here"
-   SENDER_EMAI="email_send_from"
+   SENDER_EMAIL="email_send_from"
    VONAGE_API_KEY="your_api_key_here"
    VONAGE_API_SECRET="your_api_secret_key_here"
-   VONAGE_SMS_FROM="phoneNumber_send_from"        #format e.g. (16785559999)
+   VONAGE_SMS_FROM="phoneNumber_send_from"        #format: e.g., "16785559999" (no spaces, no +)
    ```
 
 5. Make sure your Gemini API key is active in [Google AI Studio](https://makersuite.google.com/).
@@ -85,8 +94,15 @@ Then open the link in your browser (default: [http://localhost:8501](http://loca
 
 ---
 
-## Documentation and Demo
-**Mid-Demo** can be found at https://youtu.be/ygy_AnI0ntE
+## 🎬 Demo
+**Mid-Demo:** can be found at https://youtu.be/ygy_AnI0ntE
+
+---
+
+## 📖 Documentation
+
+---
+
 
 
 
