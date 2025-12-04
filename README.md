@@ -103,10 +103,6 @@ Then open the link in your browser (default: [http://localhost:8501](http://loca
 
 ---
 
-## 📖 Documentation
-
----
-
 
 
 
