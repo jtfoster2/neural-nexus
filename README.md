@@ -17,7 +17,7 @@ This project is a **multi-tool AI agent** built with:
 
 ---
 
-This project uses **SQLite** to store order and shipping data.
+This project uses **SQLite** to store order, shipping data, etc.
    ```bash
    sqlite agentic_ai.db
    sqlite> .tables
@@ -32,8 +32,8 @@ This project uses **SQLite** to store order and shipping data.
 - Environment variables managed via `.env`.
 - **Vonage SMS** integration (with working agent logic).
 - **SendGrid** email integration.
-- Order and shipping data stored in **SQLite.**
-- User and system-wide feedback collection and display
+- Data stored in **SQLite.**
+- User and system-wide **feedback** collection and display
 
 ---
 
@@ -90,7 +90,6 @@ Then open the link in your browser (default: [http://localhost:8501](http://loca
 ├── app.py          # Streamlit UI
 ├── supervisor.py   # Manages all agents and event routing
 ├── db.py           # Database logic (SQLite)
-├── sendgrid_tool.py    # SendGrid email integration
 ├── tests/              # Ensure reliability of workflows
 ├── requirements.txt    # Python dependencies
 └── .env                # Environment variables
